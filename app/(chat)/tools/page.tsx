@@ -109,9 +109,12 @@ export default function AudioTranscriptionTool() {
       
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl">
-          <h1 className="text-2xl font-bold mb-6 text-center">Audio / Video Transcription Tool</h1>
+          <h1 className="text-2xl font-bold mb-2 text-center">Audio / Video Transcription Tool</h1>
+          <p className="text-sm text-center text-muted-foreground mb-6">
+            This tool transcribes audio and video files into text! 
+          </p>
           
-          <Card className="p-6">
+          <Card className=" border-none">
             <div
               {...getRootProps()}
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
