@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { ThemeLogo } from './theme-logo';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
@@ -34,9 +35,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               }}
               className="flex flex-row gap-3 items-center"
             >
-              <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
-                Chatbot
-              </span>
+              <ThemeLogo />
             </Link>
             <Tooltip>
               <TooltipTrigger asChild>

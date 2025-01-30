@@ -123,7 +123,7 @@ export const codeBlock = new Block<'code', Metadata>({
         setMetadata((metadata) => ({
           ...metadata,
           outputs: [
-            ...metadata.outputs,
+            ...(metadata?.outputs ?? []),
             {
               id: runId,
               contents: [],
@@ -197,7 +197,7 @@ export const codeBlock = new Block<'code', Metadata>({
           setMetadata((metadata) => ({
             ...metadata,
             outputs: [
-              ...metadata.outputs.filter((output) => output.id !== runId),
+              ...(metadata?.outputs ?? []).filter((output) => output.id !== runId),
               {
                 id: runId,
                 contents: [{ type: 'text', value: error.message }],

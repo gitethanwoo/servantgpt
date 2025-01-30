@@ -40,6 +40,7 @@ export function ModelSelector({
         )}
       >
         <Button variant="outline" className="md:px-2 md:h-[34px]">
+          {selectedModel?.icon}
           {selectedModel?.label}
           <ChevronDownIcon />
         </Button>
@@ -59,13 +60,16 @@ export function ModelSelector({
             className="gap-4 group/item flex flex-row justify-between items-center"
             data-active={model.id === optimisticModelId}
           >
-            <div className="flex flex-col gap-1 items-start">
-              {model.label}
-              {model.description && (
-                <div className="text-xs text-muted-foreground">
-                  {model.description}
-                </div>
-              )}
+            <div className="flex flex-row gap-2 items-center">
+              {model.icon}
+              <div className="flex flex-col gap-1 items-start">
+                {model.label}
+                {model.description && (
+                  <div className="text-xs text-muted-foreground">
+                    {model.description}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
               <CheckCircleFillIcon />

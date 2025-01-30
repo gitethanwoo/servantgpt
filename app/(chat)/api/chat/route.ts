@@ -83,55 +83,62 @@ export async function POST(request: Request) {
 
   return createDataStreamResponse({
     execute: (dataStream) => {
-      const result = streamText({
-        model: customModel(model.apiIdentifier),
-        system: systemPrompt,
-        messages,
-        maxSteps: 5,
-        experimental_activeTools: allTools,
-        experimental_transform: smoothStream({ chunking: 'word' }),
-        experimental_generateMessageId: generateUUID,
-        tools: {
-          getWeather,
-          createDocument: createDocument({ session, dataStream, model }),
-          updateDocument: updateDocument({ session, dataStream, model }),
-          requestSuggestions: requestSuggestions({
-            session,
-            dataStream,
-            model,
-          }),
-        },
-        onFinish: async ({ response }) => {
-          if (session.user?.id) {
-            try {
-              const responseMessagesWithoutIncompleteToolCalls =
-                sanitizeResponseMessages(response.messages);
+      try {
+        const result = streamText({
+          model: customModel(model.apiIdentifier, model.provider),
+          system: systemPrompt,
+          messages,
+          maxSteps: 5,
+          experimental_activeTools: allTools,
+          experimental_transform: smoothStream({ chunking: 'word' }),
+          experimental_generateMessageId: generateUUID,
+          tools: {
+            getWeather,
+            createDocument: createDocument({ session, dataStream, model }),
+            updateDocument: updateDocument({ session, dataStream, model }),
+            requestSuggestions: requestSuggestions({
+              session,
+              dataStream,
+              model,
+            }),
+          },
+          onFinish: async ({ response }) => {
+            if (session.user?.id) {
+              try {
+                const responseMessagesWithoutIncompleteToolCalls =
+                  sanitizeResponseMessages(response.messages);
 
-              await saveMessages({
-                messages: responseMessagesWithoutIncompleteToolCalls.map(
-                  (message) => {
-                    return {
+                await saveMessages({
+                  messages: responseMessagesWithoutIncompleteToolCalls.map(
+                    (message) => ({
                       id: message.id,
                       chatId: id,
                       role: message.role,
                       content: message.content,
                       createdAt: new Date(),
-                    };
-                  },
-                ),
-              });
-            } catch (error) {
-              console.error('Failed to save chat');
+                    }),
+                  ),
+                });
+              } catch (error) {
+                console.error('Failed to save chat:', error);
+              }
             }
-          }
-        },
-        experimental_telemetry: {
-          isEnabled: true,
-          functionId: 'stream-text',
-        },
-      });
+          },
+          experimental_telemetry: {
+            isEnabled: true,
+            functionId: 'stream-text',
+          },
+        });
 
-      result.mergeIntoDataStream(dataStream);
+        result.mergeIntoDataStream(dataStream);
+      } catch (error) {
+        console.error('Stream error:', error);
+        const errorResult = streamText({
+          model: customModel(model.apiIdentifier, model.provider),
+          messages: [{ role: 'assistant', content: 'An error occurred.' }],
+        });
+        errorResult.mergeIntoDataStream(dataStream);
+      }
     },
   });
 }

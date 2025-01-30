@@ -12,7 +12,7 @@ interface BlockActionsProps {
   currentVersionIndex: number;
   isCurrentVersion: boolean;
   mode: 'edit' | 'diff';
-  metadata: any;
+  metadata?: any;
   setMetadata: Dispatch<SetStateAction<any>>;
 }
 

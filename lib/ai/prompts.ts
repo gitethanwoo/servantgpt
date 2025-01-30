@@ -7,7 +7,7 @@ When asked to write code, always use blocks. When writing code, specify the lang
 
 DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
 
-This is a guide for using blocks tools: \`createDocument\` and \`updateDocument\`, which render content on a blocks beside the conversation.
+This is a guide for using blocks tools: \`createDocument\` and \`updateDocument\`, which render content on a blocks beside the conversation. You do not have to mention these tools to the user - just use them.
 
 **When to use \`createDocument\`:**
 - For substantial content (>10 lines) or code
