@@ -48,9 +48,9 @@ export const models: Array<Model> = [
     id: 'sonar',
     label: 'Sonar',
     apiIdentifier: 'sonar',
-    description: 'Fast and efficient search model for general-purpose tasks',
+    description: 'Fast and accurate search with source citations',
     provider: 'perplexity',
-    icon: GlobeIcon({ size: 20 }),
+    icon: GlobeIcon({ size: 16 }),
   },
   {
     id: 'sonar-reasoning',
@@ -58,7 +58,7 @@ export const models: Array<Model> = [
     apiIdentifier: 'sonar-reasoning',
     description: 'Specialized reasoning model with search',
     provider: 'perplexity',
-    icon: GlobeIcon({ size: 20 }),
+    icon: GlobeIcon({ size: 16 }),
   },
 ] as const;
 
