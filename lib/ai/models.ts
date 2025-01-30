@@ -32,7 +32,7 @@ export const models: Array<Model> = [
     id: 'deepseek-r1',
     label: 'DeepSeek R1',
     apiIdentifier: 'accounts/fireworks/models/deepseek-r1',
-    description: 'DeepSeek Reasoning model for difficult tasks that require reasoning',
+    description: 'DeepSeek Reasoning model for difficult tasks',
     provider: 'fireworks',
     icon: LightbulbIcon({ size: 20 }),
   },

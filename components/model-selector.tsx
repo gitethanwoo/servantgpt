@@ -45,7 +45,7 @@ export function ModelSelector({
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[300px]">
+      <DropdownMenuContent align="start" className="min-w-[280px] md:min-w-[300px]">
         {models.map((model) => (
           <DropdownMenuItem
             key={model.id}
