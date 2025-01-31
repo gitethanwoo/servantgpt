@@ -27,13 +27,12 @@ export const createDocument = ({
 }: CreateDocumentProps) =>
   tool({
     description:
-      'Create a document for a writing or content creation activities like image generation. This tool will call other functions that will generate the contents of the document based on the title and kind. If you are generating an image, make sure to include a prompt for the image.',
+      'Create a document for a writing or content creation activities like image generation. This tool will call other functions that will generate the contents of the document based on the title and kind. If you are generating an image, make sure to include a prompt for the image as the title.',
     parameters: z.object({
       title: z.string(),
       kind: z.enum(['text', 'code', 'image']),
-      imagePrompt: z.string().optional(),
     }),
-    execute: async ({ title, kind, imagePrompt }) => {
+    execute: async ({ title, kind }) => {
       const id = generateUUID();
       let draftText = '';
 
@@ -113,7 +112,7 @@ export const createDocument = ({
       } else if (kind === 'image') {
         const { image } = await experimental_generateImage({
           model: imageGenerationModel,
-          prompt: imagePrompt ?? title,
+          prompt: title,
           n: 1,
         });
 

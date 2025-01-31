@@ -13,9 +13,9 @@ export interface Model {
 
 export const models: Array<Model> = [
   {
-    id: 'gpt-4o-mini',
-    label: 'GPT 4o mini',
-    apiIdentifier: 'gpt-4o-mini',
+    id: 'o3-mini',
+    label: 'o3 Mini',
+    apiIdentifier: 'o3-mini',
     description: 'Smallest model that balances speed and quality',
     provider: 'openai',
     icon: LightningIcon({ size: 16 }),
