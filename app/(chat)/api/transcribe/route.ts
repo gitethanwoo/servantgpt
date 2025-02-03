@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 
 export async function POST(request: Request) {
   try {
@@ -27,6 +28,14 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     const transcription = data.results?.channels[0]?.alternatives[0]?.transcript || '';
+    
+    // Delete the blob after successful transcription
+    try {
+      await del(audioUrl);
+    } catch (deleteError) {
+      console.error('Failed to delete blob:', deleteError);
+      // Don't throw here, as we still want to return the transcription
+    }
     
     return NextResponse.json({ text: transcription });
   } catch (error) {
