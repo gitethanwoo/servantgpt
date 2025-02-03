@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 
+// Set function timeout to 60 seconds
+export const runtime = 'edge'; // Use edge runtime for longer timeouts
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const { audioUrl } = await request.json();

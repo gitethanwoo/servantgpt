@@ -4,6 +4,10 @@ import { z } from 'zod';
 
 import { auth } from '@/app/(auth)/auth';
 
+// Set function timeout to 60 seconds
+export const runtime = 'edge'; // Use edge runtime for longer timeouts
+export const maxDuration = 60;
+
 const AudioFileSchema = z.object({
   file: z
     .instanceof(Blob)

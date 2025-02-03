@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { SidebarToggle } from '@/components/sidebar-toggle';
 
 export default function AudioTranscriptionTool() {
+
   const [transcription, setTranscription] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
