@@ -6,21 +6,16 @@ export async function POST(request: Request) {
   try {
     const { audioUrl } = await request.json();
     
-    // Download the file from the URL
-    const audioResponse = await fetch(audioUrl);
-    const audioBlob = await audioResponse.blob();
-    
-    // Convert blob to array buffer for Deepgram
-    const arrayBuffer = await audioBlob.arrayBuffer();
-
-    // Call Deepgram API with smart parameters
+    // Call Deepgram API with smart parameters and the blob URL directly
     const response = await fetch('https://api.deepgram.com/v1/listen?smart_format=true&punctuate=true&diarize=true', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
-        'Content-Type': audioBlob.type || 'audio/mpeg',
+        'Content-Type': 'application/json',
       },
-      body: arrayBuffer,
+      body: JSON.stringify({
+        url: audioUrl,
+      }),
     });
 
     if (!response.ok) {

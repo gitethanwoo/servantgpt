@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { UploadIcon, LoaderIcon, CopyIcon } from '@/components/icons';
 import { toast } from "sonner"
 import { SidebarToggle } from '@/components/sidebar-toggle';
+import { upload } from '@vercel/blob/client';
 
 export default function AudioTranscriptionTool() {
 
@@ -23,20 +24,11 @@ export default function AudioTranscriptionTool() {
       setIsLoading(true);
       setError('');
       
-      // Upload file to blob storage
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadResponse = await fetch('/api/audio/upload', {
-        method: 'POST',
-        body: formData,
+      // Upload directly to blob storage from client
+      const { url } = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/audio/upload',
       });
-
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json();
-        throw new Error(error.error || 'Failed to upload file');
-      }
-
-      const { url } = await uploadResponse.json();
       
       // Send URL to transcribe endpoint
       const transcribeResponse = await fetch('/api/transcribe', {
@@ -90,7 +82,7 @@ export default function AudioTranscriptionTool() {
             This tool transcribes audio and video files into text! 
           </p>
           
-          <Card className=" border-none">
+          <Card className="shadow-none border-none">
             <div
               {...getRootProps()}
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
