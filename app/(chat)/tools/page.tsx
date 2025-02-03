@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UploadIcon, LoaderIcon, CopyIcon } from '@/components/icons';
 import { toast } from "sonner"
-import { extractAudioFromVideo, splitAudioFile } from '@/lib/audio-utils';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 
 export default function AudioTranscriptionTool() {
@@ -14,17 +13,6 @@ export default function AudioTranscriptionTool() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const processFile = async (file: File) => {
-    console.log('Processing file:', file.type, file.size);
-    // If it's a video, extract the audio first
-    if (file.type.startsWith('video/')) {
-      console.log('Extracting audio from video');
-      const audioBlob = await extractAudioFromVideo(file);
-      console.log('Audio extracted:', audioBlob.type, audioBlob.size);
-      return audioBlob;
-    }
-    return file;
-  };
 
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -33,55 +21,42 @@ export default function AudioTranscriptionTool() {
     try {
       setIsLoading(true);
       setError('');
-
-      console.log('Starting file processing:', file.name, file.type);
-      // First process video if needed
-      const processedFile = await processFile(file);
-      console.log('File processed:', processedFile.type, processedFile.size);
       
-      // Then split into chunks if needed
-      const chunks = await splitAudioFile(processedFile);
-      console.log('File split into', chunks.length, 'chunks');
-      
-      let fullTranscript = '';
-      
-      for (const [index, chunk] of chunks.entries()) {
-        toast.info(`Processing part ${index + 1} of ${chunks.length}`);
-        console.log(`Uploading chunk ${index + 1}:`, chunk.type, chunk.size);
-        
-        // Upload chunk
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', chunk);
-        const uploadResponse = await fetch('/api/audio/upload', {
-          method: 'POST',
-          body: uploadFormData,
-        });
+      // Upload file to blob storage
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadResponse = await fetch('/api/audio/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          console.error('Upload failed:', errorData);
-          throw new Error(`Failed to upload file: ${errorData.error || 'Unknown error'}`);
-        }
-
-        const { url } = await uploadResponse.json();
-        console.log('Chunk uploaded successfully, URL:', url);
-        
-        // Transcribe chunk
-        const transcribeResponse = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: JSON.stringify({ audioUrl: url }),
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const data = await transcribeResponse.json();
-        fullTranscript += data.text + '\n';
+      if (!uploadResponse.ok) {
+        const error = await uploadResponse.json();
+        throw new Error(error.error || 'Failed to upload file');
       }
 
-      setTranscription(fullTranscript);
+      const { url } = await uploadResponse.json();
+      
+      // Send URL to transcribe endpoint
+      const transcribeResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ audioUrl: url }),
+      });
+      
+      if (!transcribeResponse.ok) {
+        throw new Error('Failed to transcribe file');
+      }
+      
+      const data = await transcribeResponse.json();
+      setTranscription(data.text);
       toast.success("Transcription complete");
     } catch (err) {
-      console.error('Processing error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process audio');
+      console.error('Error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      toast.error("Failed to process file");
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +65,7 @@ export default function AudioTranscriptionTool() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'audio/*': ['.mp3', '.mp4', '.mpeg', '.mpga', '.m4a', '.wav', '.webm'],
+      'audio/*': ['.mp3', '.m4a', '.wav', '.webm'],
       'video/*': ['.mp4', '.webm', '.mov'],
     },
     maxFiles: 1,
@@ -131,7 +106,7 @@ export default function AudioTranscriptionTool() {
                   : 'Drag and drop an audio file here, or click to select'}
               </p>
               <p className="text-sm text-gray-500">
-                Supported formats: MP3, MP4, M4A, WAV, WEBM (max 25MB)
+                Supported formats: MP3, MP4, M4A, WAV, WEBM (max 100MB)
               </p>
             </div>
 

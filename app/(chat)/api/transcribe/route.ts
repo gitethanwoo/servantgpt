@@ -8,31 +8,31 @@ export async function POST(request: Request) {
     const audioResponse = await fetch(audioUrl);
     const audioBlob = await audioResponse.blob();
     
-    // Create form data with the downloaded file
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.mp3'); // Add filename as third parameter
-    formData.append('model', 'whisper-large-v3');
+    // Convert blob to array buffer for Deepgram
+    const arrayBuffer = await audioBlob.arrayBuffer();
 
-    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    // Call Deepgram API with smart parameters
+    const response = await fetch('https://api.deepgram.com/v1/listen?smart_format=true&punctuate=true&diarize=true', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
+        'Content-Type': audioBlob.type || 'audio/mpeg',
       },
-      body: formData,
+      body: arrayBuffer,
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error: ${error}`);
+      throw new Error('Transcription failed');
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const transcription = data.results?.channels[0]?.alternatives[0]?.transcript || '';
+    
+    return NextResponse.json({ text: transcription });
   } catch (error) {
     console.error('Transcription error:', error);
     return NextResponse.json({ 
-      error: 'Failed to transcribe',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to transcribe file'
     }, { status: 500 });
   }
 }
