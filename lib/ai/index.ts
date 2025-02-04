@@ -4,11 +4,11 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { perplexity } from '@ai-sdk/perplexity';
 import { replicate } from '@ai-sdk/replicate';
 
-import { experimental_wrapLanguageModel as wrapLanguageModel } from 'ai';
+import { wrapLanguageModel } from 'ai';
 
 import { customMiddleware } from './custom-middleware';
 
-export const customModel = (apiIdentifier: string, provider: 'openai' | 'fireworks' | 'anthropic' | 'perplexity' = 'openai') => {
+export const customModel = (apiIdentifier: string, provider: 'openai' | 'fireworks' | 'anthropic' | 'perplexity') => {
   const modelMap = {
     openai: openai(apiIdentifier),
     fireworks: fireworks(apiIdentifier),

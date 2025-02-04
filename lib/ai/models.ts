@@ -45,9 +45,9 @@ export const models: Array<Model> = [
     icon: CodeIcon({ size: 16 }),
   },
   {
-    id: 'sonar',
-    label: 'Sonar',
-    apiIdentifier: 'sonar',
+    id: 'sonar-pro',
+    label: 'Sonar Pro',
+    apiIdentifier: 'sonar-pro',
     description: 'Fast and accurate search with source citations',
     provider: 'perplexity',
     icon: GlobeIcon({ size: 16 }),

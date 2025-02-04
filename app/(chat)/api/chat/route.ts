@@ -7,7 +7,7 @@ import {
 
 import { auth } from '@/app/(auth)/auth';
 import { customModel } from '@/lib/ai';
-import { models } from '@/lib/ai/models';
+import { models, DEFAULT_MODEL_NAME } from '@/lib/ai/models';
 import { systemPrompt } from '@/lib/ai/prompts';
 import {
   deleteChatById,
@@ -52,16 +52,22 @@ export async function POST(request: Request) {
   }: { id: string; messages: Array<Message>; modelId: string } =
     await request.json();
 
+  console.log('Received modelId:', modelId);
+  
   const session = await auth();
 
   if (!session || !session.user || !session.user.id) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const model = models.find((model) => model.id === modelId);
-
+  let model = models.find((model) => model.id === modelId);
+  
   if (!model) {
-    return new Response('Model not found', { status: 404 });
+    console.log('Model not found, falling back to default model');
+    model = models.find((model) => model.id === DEFAULT_MODEL_NAME);
+    if (!model) {
+      return new Response('Default model not found', { status: 500 });
+    }
   }
 
   const userMessage = getMostRecentUserMessage(messages);
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
   return createDataStreamResponse({
     execute: (dataStream) => {
       const result = streamText({
-        model: customModel(model.apiIdentifier),
+        model: customModel(model.apiIdentifier, model.provider),
         system: systemPrompt,
         messages,
         maxSteps: 5,
