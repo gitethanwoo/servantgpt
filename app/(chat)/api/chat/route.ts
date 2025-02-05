@@ -8,7 +8,7 @@ import {
 import { auth } from '@/app/(auth)/auth';
 import { customModel } from '@/lib/ai';
 import { models, DEFAULT_MODEL_NAME } from '@/lib/ai/models';
-import { systemPrompt } from '@/lib/ai/prompts';
+import { getSystemPrompt } from '@/lib/ai/prompts';
 import {
   deleteChatById,
   getChatById,
@@ -26,6 +26,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
+import { webSearch } from '@/lib/ai/tools/web-search';
 
 export const maxDuration = 60;
 
@@ -33,7 +34,8 @@ type AllowedTools =
   | 'createDocument'
   | 'updateDocument'
   | 'requestSuggestions'
-  | 'getWeather';
+  | 'getWeather'
+  | 'webSearch';
 
 const blocksTools: AllowedTools[] = [
   'createDocument',
@@ -42,7 +44,8 @@ const blocksTools: AllowedTools[] = [
 ];
 
 const weatherTools: AllowedTools[] = ['getWeather'];
-const allTools: AllowedTools[] = [...blocksTools, ...weatherTools];
+const searchTools: AllowedTools[] = ['webSearch'];
+const allTools: AllowedTools[] = [...blocksTools, ...weatherTools, ...searchTools];
 
 export async function POST(request: Request) {
   const {
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
     execute: (dataStream) => {
       const result = streamText({
         model: customModel(model.apiIdentifier, model.provider),
-        system: systemPrompt,
+        system: getSystemPrompt(),
         messages,
         maxSteps: 5,
         experimental_activeTools: allTools,
@@ -99,6 +102,7 @@ export async function POST(request: Request) {
         experimental_generateMessageId: generateUUID,
         tools: {
           getWeather,
+          webSearch,
           createDocument: createDocument({ session, dataStream, model }),
           updateDocument: updateDocument({ session, dataStream, model }),
           requestSuggestions: requestSuggestions({
