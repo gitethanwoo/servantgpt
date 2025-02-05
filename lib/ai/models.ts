@@ -44,22 +44,6 @@ export const models: Array<Model> = [
     provider: 'anthropic',
     icon: CodeIcon({ size: 16 }),
   },
-  {
-    id: 'sonar-pro',
-    label: 'Sonar Pro',
-    apiIdentifier: 'sonar-pro',
-    description: 'Fast and accurate search with source citations',
-    provider: 'perplexity',
-    icon: GlobeIcon({ size: 16 }),
-  },
-  {
-    id: 'sonar-reasoning',
-    label: 'Sonar Reasoning',
-    apiIdentifier: 'sonar-reasoning',
-    description: 'Specialized reasoning model with search',
-    provider: 'perplexity',
-    icon: GlobeIcon({ size: 16 }),
-  },
 ] as const;
 
 export const DEFAULT_MODEL_NAME: string = 'gpt-4o';
