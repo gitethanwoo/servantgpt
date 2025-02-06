@@ -167,31 +167,49 @@ function PureMultimodalInput({
     }
   };
 
+  const handleFiles = useCallback(async (files: Array<File>) => {
+    setUploadQueue(files.map((file) => file.name));
+
+    try {
+      const uploadPromises = files.map((file) => uploadFile(file));
+      const uploadedAttachments = await Promise.all(uploadPromises);
+      const successfullyUploadedAttachments = uploadedAttachments.filter(
+        (attachment) => attachment !== undefined,
+      );
+
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...successfullyUploadedAttachments,
+      ]);
+    } catch (error) {
+      console.error('Error uploading files!', error);
+    } finally {
+      setUploadQueue([]);
+    }
+  }, [setAttachments]);
+
   const handleFileChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
-
-      setUploadQueue(files.map((file) => file.name));
-
-      try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined,
-        );
-
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
-      } catch (error) {
-        console.error('Error uploading files!', error);
-      } finally {
-        setUploadQueue([]);
-      }
+      handleFiles(files);
     },
-    [setAttachments],
+    [handleFiles],
   );
+
+  useEffect(() => {
+    function handleDrop(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    }
+
+    window.addEventListener('drop', handleDrop);
+    return () => window.removeEventListener('drop', handleDrop);
+  }, [handleFiles]);
 
   return (
     <div className="relative w-full flex flex-col gap-4">

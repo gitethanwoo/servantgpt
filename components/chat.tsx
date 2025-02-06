@@ -14,6 +14,8 @@ import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import { VisibilityType } from './visibility-selector';
 import { useBlockSelector } from '@/hooks/use-block';
+import { useFileDrop } from '@/hooks/use-file-drop';
+import { DragOverlay } from './drag-overlay';
 
 export function Chat({
   id,
@@ -59,6 +61,7 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isBlockVisible = useBlockSelector((state) => state.isVisible);
+  const { isDragging } = useFileDrop();
 
   return (
     <>
@@ -116,6 +119,8 @@ export function Chat({
         votes={votes}
         isReadonly={isReadonly}
       />
+
+      {!isReadonly && <DragOverlay isVisible={isDragging} />}
     </>
   );
 }
