@@ -20,8 +20,9 @@ import {
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { ThemeLogo } from './theme-logo';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const items = [
   {
@@ -46,6 +47,7 @@ const items = [
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
+  const isMobile = useIsMobile();
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
@@ -55,22 +57,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             <Link href="/" onClick={() => setOpenMobile(false)}>
               <ThemeLogo />
             </Link>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="p-2 h-fit"
-                  onClick={() => {
-                    setOpenMobile(false);
-                    router.push('/');
-                    router.refresh();
-                  }}
-                >
-                  <PlusIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent align="end">New Chat</TooltipContent>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip open={isMobile ? false : undefined}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="p-2 h-fit"
+                    onClick={() => {
+                      setOpenMobile(false);
+                      router.push('/');
+                      router.refresh();
+                    }}
+                  >
+                    <PlusIcon />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent align="end">New Chat</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </SidebarMenu>
       </SidebarHeader>
