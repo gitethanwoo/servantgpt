@@ -242,9 +242,15 @@ function PureMultimodalInput({
 
       <div className="relative flex border flex-col rounded-2xl bg-background dark:bg-muted overflow-hidden shadow-lg">
         {(attachments.length > 0 || uploadQueue.length > 0) && (
-          <div className="flex flex-row gap-2 overflow-x-auto px-3 pt-3 pb-1 items-end">
+          <div className="flex flex-row gap-2 overflow-x-auto px-3 pt-3 mb-2 items-end">
             {attachments.map((attachment) => (
-              <PreviewAttachment key={attachment.url} attachment={attachment} />
+              <PreviewAttachment 
+                key={attachment.url} 
+                attachment={attachment}
+                onRemove={() => {
+                  setAttachments(attachments.filter(a => a.url !== attachment.url));
+                }}
+              />
             ))}
 
             {uploadQueue.map((filename) => (
@@ -267,7 +273,7 @@ function PureMultimodalInput({
           value={input}
           onChange={handleInput}
           className={cx(
-            'min-h-[24px] max-h-[300px] px-3 py-3 resize-none rounded-2xl !text-base border-none pb-14',
+            'min-h-[24px] max-h-[300px] px-3 py-3 resize-none rounded-2xl !text-base border-none pb-14 focus-visible:ring-0 focus-visible:ring-offset-0',
             className,
           )}
           rows={2}
