@@ -1,20 +1,63 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { UploadIcon, LoaderIcon, CopyIcon } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { UploadIcon, LoaderIcon, CopyIcon, UserIcon } from '@/components/icons';
 import { toast } from "sonner"
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import { upload } from '@vercel/blob/client';
 
 export default function AudioTranscriptionTool() {
 
-  const [transcription, setTranscription] = useState<string>('');
+  const [transcription, setTranscription] = useState<{
+    text: string;
+    paragraphs: Array<{
+      sentences: Array<{
+        text: string;
+        start: number;
+        end: number;
+        speaker: number;
+      }>;
+      speaker: number;
+      num_words: number;
+      start: number;
+      end: number;
+    }>;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [speakerNames, setSpeakerNames] = useState<Record<number, string>>({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Get unique speakers from paragraphs
+  const uniqueSpeakers = useMemo(() => {
+    if (!transcription) return [];
+    return Array.from(new Set(transcription.paragraphs.map(p => p.speaker))).sort();
+  }, [transcription]);
+
+  const handleSaveSpeakerNames = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const names: Record<number, string> = {};
+    
+    uniqueSpeakers.forEach(speaker => {
+      const name = formData.get(`speaker-${speaker}`)?.toString();
+      if (name) names[speaker] = name;
+    });
+    
+    setSpeakerNames(names);
+    setIsDialogOpen(false);
+    toast.success("Speaker names updated");
+  };
+
+  const getSpeakerLabel = (speakerNumber: number) => {
+    return speakerNames[speakerNumber] || `Speaker ${speakerNumber + 1}`;
+  };
 
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -44,7 +87,7 @@ export default function AudioTranscriptionTool() {
       }
       
       const data = await transcribeResponse.json();
-      setTranscription(data.text);
+      setTranscription(data);
       toast.success("Transcription complete");
     } catch (err) {
       console.error('Error:', err);
@@ -64,9 +107,35 @@ export default function AudioTranscriptionTool() {
     maxFiles: 1,
   });
 
+  const formatTimestamp = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(transcription);
+    if (!transcription) return;
+    
+    // Format the text with speaker names
+    const formattedText = transcription.paragraphs.map(paragraph => {
+      const speakerLabel = `${getSpeakerLabel(paragraph.speaker)}: `;
+      const sentences = paragraph.sentences.map(s => s.text).join(' ');
+      return `${speakerLabel}${sentences}`;
+    }).join('\n\n');
+    
+    navigator.clipboard.writeText(formattedText);
     toast.success("Copied to clipboard");
+  };
+
+  const getSpeakerColor = (speakerNumber: number) => {
+    const colors = [
+      'bg-blue-500/20 text-blue-700 hover:bg-blue-500/20',
+      'bg-green-500/20 text-green-700 hover:bg-green-500/20',
+      'bg-purple-500/20 text-purple-700 hover:bg-purple-500/20',
+      'bg-orange-500/20 text-orange-700 hover:bg-orange-500/20',
+      'bg-pink-500/20 text-pink-700 hover:bg-pink-500/20'
+    ];
+    return colors[speakerNumber % colors.length];
   };
 
   return (
@@ -121,7 +190,47 @@ export default function AudioTranscriptionTool() {
             {transcription && (
               <div className="mt-8">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Transcription</h2>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold">Transcription</h2>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <UserIcon />
+                          Name Speakers
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Name Speakers</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleSaveSpeakerNames} className="space-y-4 mt-4">
+                          {uniqueSpeakers.map((speaker) => (
+                            <div key={speaker} className="flex flex-col gap-2">
+                              <label 
+                                htmlFor={`speaker-${speaker}`}
+                                className="text-sm font-medium"
+                              >
+                                Speaker {speaker + 1} Name
+                              </label>
+                              <Input
+                                id={`speaker-${speaker}`}
+                                name={`speaker-${speaker}`}
+                                defaultValue={speakerNames[speaker] || ''}
+                                placeholder={`Enter name for Speaker ${speaker + 1}`}
+                              />
+                            </div>
+                          ))}
+                          <Button type="submit" className="w-full">
+                            Save Names
+                          </Button>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -132,8 +241,28 @@ export default function AudioTranscriptionTool() {
                     Copy
                   </Button>
                 </div>
-                <div className="p-4 bg-muted rounded-lg whitespace-pre-wrap">
-                  {transcription}
+                <div className="p-4 bg-muted rounded-lg">
+                  {transcription.paragraphs.map((paragraph, index) => (
+                    <div key={index} className="mb-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge 
+                          className={`${getSpeakerColor(paragraph.speaker)}`}
+                        >
+                          {getSpeakerLabel(paragraph.speaker)}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {formatTimestamp(paragraph.start)}
+                        </span>
+                      </div>
+                      <div className="whitespace-pre-wrap">
+                        {paragraph.sentences.map((sentence, sIndex) => (
+                          <span key={sIndex} className="mr-1">
+                            {sentence.text}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

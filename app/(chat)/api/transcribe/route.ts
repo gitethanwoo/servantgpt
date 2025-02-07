@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const { audioUrl } = await request.json();
     
     // Call Deepgram API with smart parameters and the blob URL directly
-    const response = await fetch('https://api.deepgram.com/v1/listen?smart_format=true&punctuate=true&diarize=true', {
+    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true&diarize=true&paragraphs=true', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
@@ -24,7 +24,12 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    const transcription = data.results?.channels[0]?.alternatives[0]?.transcript || '';
+    
+    // Get the full response data including paragraphs
+    const result = {
+      text: data.results?.channels[0]?.alternatives[0]?.transcript || '',
+      paragraphs: data.results?.channels[0]?.alternatives[0]?.paragraphs?.paragraphs || []
+    };
     
     // Delete the blob after successful transcription
     try {
@@ -34,7 +39,7 @@ export async function POST(request: Request) {
       // Don't throw here, as we still want to return the transcription
     }
     
-    return NextResponse.json({ text: transcription });
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Transcription error:', error);
     return NextResponse.json({ 
