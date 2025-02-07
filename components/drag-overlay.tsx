@@ -17,7 +17,7 @@ export function DragOverlay({ isVisible }: DragOverlayProps) {
         >
           <div className="flex flex-col items-center gap-2 p-4 text-center">
             <div className="rounded-full bg-muted p-6">
-              <ImageIcon className="size-12 text-muted-foreground" />
+              <ImageIcon size={48} />
             </div>
             <h3 className="text-lg font-semibold">Drop your files here</h3>
             <p className="text-sm text-muted-foreground">
