@@ -1196,3 +1196,22 @@ export const SearchIcon = ({ size = 24 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const BugIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      viewBox="0 0 16 16"
+      width={size}
+      style={{ color: 'currentcolor' }}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M4.5 2.5C4.5 1.11929 5.61929 0 7 0H9C10.3807 0 11.5 1.11929 11.5 2.5V3H13.5V4.5H11.5V5.5C11.5 6.42123 11.1387 7.24895 10.5459 7.85001L12.5 9.80396V12.5H11V10.196L9.12132 8.31736C8.77534 8.42805 8.39917 8.49072 8 8.49072C7.60083 8.49072 7.22466 8.42805 6.87868 8.31736L5 10.196V12.5H3.5V9.80396L5.45408 7.85001C4.86127 7.24895 4.5 6.42123 4.5 5.5V4.5H2.5V3H4.5V2.5ZM7 1.5C6.44772 1.5 6 1.94772 6 2.5V3H10V2.5C10 1.94772 9.55228 1.5 9 1.5H7ZM6 5.5V4.5H10V5.5C10 6.88071 8.88071 8 7.5 8H8.5C7.11929 8 6 6.88071 6 5.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+};

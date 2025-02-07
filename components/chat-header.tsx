@@ -8,11 +8,12 @@ import { useEffect, useState, memo } from 'react';
 import { ModelSelector } from '@/components/model-selector';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, VercelIcon } from './icons';
+import { PlusIcon, VercelIcon, BugIcon } from './icons';
 import { useSidebar } from './ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import { VisibilityType, VisibilitySelector } from './visibility-selector';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFeedback } from '@/components/providers/feedback-provider';
 
 function PureChatHeader({
   chatId,
@@ -30,6 +31,7 @@ function PureChatHeader({
   const isMobile = useIsMobile();
   const { width: windowWidth } = useWindowSize();
   const [mounted, setMounted] = useState(false);
+  const { openFeedback } = useFeedback();
 
   useEffect(() => {
     setMounted(true);
@@ -83,6 +85,22 @@ function PureChatHeader({
           className="order-1 md:order-3"
         />
       )}
+
+      <TooltipProvider>
+        <Tooltip open={isMobile ? false : undefined}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="order-last ml-auto"
+              onClick={openFeedback}
+            >
+              <BugIcon size={20} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Report Issue</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </header>
   );
 }
