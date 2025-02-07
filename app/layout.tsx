@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import { Toaster } from 'sonner';
-
-import { ThemeProvider } from '@/components/theme-provider';
-import { FeedbackProvider } from '@/components/providers/feedback-provider';
+import { ClientProviders } from '@/components/providers/client-providers';
 
 import './globals.css';
 
@@ -36,7 +33,7 @@ const THEME_COLOR_SCRIPT = `\
   updateThemeColor();
 })();`;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -58,17 +55,9 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <FeedbackProvider>
-            <Toaster position="top-center" />
-            {children}
-          </FeedbackProvider>
-        </ThemeProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

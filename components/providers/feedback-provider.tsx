@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import html2canvas from 'html2canvas'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 
@@ -29,8 +28,38 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
   const captureScreenshot = async () => {
     try {
-      const canvas = await html2canvas(document.body)
-      return canvas.toDataURL('image/png')
+      // Use native screenshot API
+      const stream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: {
+          displaySurface: "browser"
+        }
+      })
+      
+      // Create video element to capture frame
+      const video = document.createElement('video')
+      video.srcObject = stream
+      await video.play()
+      
+      // Create canvas to capture frame
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      
+      // Draw frame to canvas
+      const ctx = canvas.getContext('2d')
+      ctx?.drawImage(video, 0, 0)
+      
+      // Stop screen capture
+      stream.getTracks().forEach(track => track.stop())
+      
+      // Convert to blob directly
+      return new Promise<Blob>((resolve) => {
+        canvas.toBlob(
+          (blob) => resolve(blob!),
+          'image/jpeg',
+          0.95
+        )
+      })
     } catch (error) {
       console.error('Failed to capture screenshot:', error)
       return null
@@ -50,6 +79,27 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     try {
       const screenshot = await captureScreenshot()
       const consoleLogs = getRecentConsoleLogs()
+      
+      let screenshotUrl = null
+      if (screenshot) {
+        // Upload to Vercel Blob using existing endpoint
+        const formData = new FormData()
+        formData.append('file', screenshot, `feedback-${Date.now()}.jpg`)
+        
+        const uploadResponse = await fetch('/api/files/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (!uploadResponse.ok) {
+          const error = await uploadResponse.json()
+          console.error('Screenshot upload failed:', error)
+          throw new Error(error.error || 'Failed to upload screenshot')
+        }
+        
+        const { url } = await uploadResponse.json()
+        screenshotUrl = url
+      }
 
       const response = await fetch('/api/feedback', {
         method: 'POST',
@@ -58,9 +108,8 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           description,
-          screenshot,
+          screenshot: screenshotUrl,
           consoleLogs,
-          email: session?.user?.email,
           pathname,
         }),
       })
