@@ -76,8 +76,19 @@ function PureMultimodalInput({
 
   const adjustHeight = () => {
     if (textareaRef.current) {
+      // Reset height to auto to get the correct scrollHeight
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 2}px`;
+      
+      // Calculate new height
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 300;
+      
+      // Set new height, capped at maxHeight
+      const newHeight = Math.min(scrollHeight + 2, maxHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
+      
+      // Add overflow only when content exceeds maxHeight
+      textareaRef.current.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
     }
   };
 
@@ -85,6 +96,7 @@ function PureMultimodalInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = '98px';
+      textareaRef.current.style.overflowY = 'hidden';
     }
   };
 
@@ -228,64 +240,68 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div className="flex flex-row gap-2 overflow-x-scroll items-end">
-          {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
-          ))}
+      <div className="relative flex border flex-col rounded-2xl bg-background dark:bg-muted overflow-hidden shadow-lg">
+        {(attachments.length > 0 || uploadQueue.length > 0) && (
+          <div className="flex flex-row gap-2 overflow-x-auto px-3 pt-3 pb-1 items-end">
+            {attachments.map((attachment) => (
+              <PreviewAttachment key={attachment.url} attachment={attachment} />
+            ))}
 
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: '',
-                name: filename,
-                contentType: '',
-              }}
-              isUploading={true}
-            />
-          ))}
-        </div>
-      )}
-
-      <Textarea
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
-          className,
+            {uploadQueue.map((filename) => (
+              <PreviewAttachment
+                key={filename}
+                attachment={{
+                  url: '',
+                  name: filename,
+                  contentType: '',
+                }}
+                isUploading={true}
+              />
+            ))}
+          </div>
         )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
 
-            if (isLoading) {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+        <Textarea
+          ref={textareaRef}
+          placeholder="Send a message..."
+          value={input}
+          onChange={handleInput}
+          className={cx(
+            'min-h-[24px] max-h-[300px] px-3 py-3 resize-none rounded-2xl !text-base border-none pb-14',
+            className,
+          )}
+          rows={2}
+          autoFocus
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+
+              if (isLoading) {
+                toast.error('Please wait for the model to finish its response!');
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} isLoading={isLoading} />
-      </div>
+        <div className="absolute bottom-0 overflow-hidden inset-x-0 p-2 flex justify-between items-center bg-background dark:bg-muted rounded-b-2xl">
+          <div className="flex items-center">
+            <AttachmentsButton fileInputRef={fileInputRef} isLoading={isLoading} />
+          </div>
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {isLoading ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
-          />
-        )}
+          <div className="flex items-center">
+            {isLoading ? (
+              <StopButton stop={stop} setMessages={setMessages} />
+            ) : (
+              <SendButton
+                input={input}
+                submitForm={submitForm}
+                uploadQueue={uploadQueue}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
