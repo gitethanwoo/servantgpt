@@ -56,7 +56,7 @@ function PureChatHeader({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className="order-2 md:order-1 md:px-2 px-2 md:h-fit ml-auto md:ml-0"
+                className="order-last md:order-1 md:px-2 px-2 md:h-fit"
                 onClick={() => {
                   router.push('/');
                   router.refresh();
@@ -92,7 +92,7 @@ function PureChatHeader({
             <Button
               variant="outline"
               size="icon"
-              className="order-last ml-auto"
+              className="order-last"
               onClick={openFeedback}
             >
               <BugIcon size={20} />
