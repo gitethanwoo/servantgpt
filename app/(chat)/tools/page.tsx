@@ -144,8 +144,8 @@ export default function AudioTranscriptionTool() {
         <SidebarToggle />
       </div>
       
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl">
+      <div className={`flex-1 p-4 ${transcription ? 'pt-24' : 'flex items-center justify-center'}`}>
+        <div className="w-full max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold mb-2 text-center">Audio / Video Transcription Tool</h1>
           <p className="text-sm text-center text-muted-foreground mb-6">
             This tool transcribes audio and video files into text! 
@@ -189,15 +189,24 @@ export default function AudioTranscriptionTool() {
 
             {transcription && (
               <div className="mt-8">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-semibold">Transcription</h2>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-2 mb-4">
+                  <h2 className="text-xl font-semibold">Transcription</h2>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyToClipboard}
+                      className="flex items-center gap-2 flex-1 sm:flex-initial justify-center"
+                    >
+                      <CopyIcon/>
+                      Copy
+                    </Button>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 flex-1 sm:flex-initial justify-center"
                         >
                           <UserIcon />
                           Name Speakers
@@ -231,15 +240,6 @@ export default function AudioTranscriptionTool() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="flex items-center gap-2"
-                  >
-                    <CopyIcon/>
-                    Copy
-                  </Button>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   {transcription.paragraphs.map((paragraph, index) => (
