@@ -15,7 +15,7 @@ export const PreviewAttachment = ({
 
   return (
     <div className="flex flex-col relative group">
-      <div className="w-28 h-24 aspect-video bg-muted/50 border border-zinc-300 rounded-md relative flex flex-col items-center justify-center">
+      <div className="w-28 h-24 aspect-video bg-muted/50 border border-zinc-300  relative flex flex-col items-center justify-center">
         {!isUploading && onRemove && (
           <button
             onClick={(e) => {
