@@ -20,7 +20,13 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      throw new Error('Transcription failed');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Deepgram API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Transcription failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();

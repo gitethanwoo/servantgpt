@@ -66,21 +66,14 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getRecentConsoleLogs = () => {
-    // In a real implementation, you'd need to set up console log capturing
-    // This is a placeholder
-    return []
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
       const screenshot = await captureScreenshot()
-      const consoleLogs = getRecentConsoleLogs()
-      
       let screenshotUrl = null
+
       if (screenshot) {
         // Upload to Vercel Blob using existing endpoint
         const formData = new FormData()
@@ -101,17 +94,19 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         screenshotUrl = url
       }
 
+      // Format the submission data
+      const submissionData = {
+        description,
+        screenshot: screenshotUrl,
+        pathname,
+      }
+
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          description,
-          screenshot: screenshotUrl,
-          consoleLogs,
-          pathname,
-        }),
+        body: JSON.stringify(submissionData)
       })
 
       if (!response.ok) {
