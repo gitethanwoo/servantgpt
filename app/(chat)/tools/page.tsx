@@ -20,7 +20,7 @@ export default function ToolsPage() {
         />
       </header>
 
-      <div className="container h-full overflow-y-auto p-6">
+      <div className="container mx-auto h-full overflow-y-auto p-6">
         {selectedTool === 'audio' && <AudioTranscriptionTool />}
         {selectedTool === 'youtube' && <YoutubeTranscriptTool />}
       </div>
