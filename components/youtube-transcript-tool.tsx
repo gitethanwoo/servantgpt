@@ -73,7 +73,7 @@ export function YoutubeTranscriptTool() {
     <div className="w-full max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-2 text-center">YouTube Transcript Tool</h1>
       <p className="text-sm text-center text-muted-foreground mb-6">
-        Extract transcripts from YouTube videos
+        Extract transcripts from YouTube videos. Note: this tool is not working in production as of Monday, February 10. 
       </p>
 
       <Card className="p-6">

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const { audioUrl } = await request.json();
     
     // Call Deepgram API with smart parameters and the blob URL directly
-    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true&diarize=true&paragraphs=true', {
+    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2-meeting&smart_format=true&punctuate=true&diarize=true&paragraphs=true', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
