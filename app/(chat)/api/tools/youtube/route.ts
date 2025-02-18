@@ -1,137 +1,75 @@
 import { NextResponse } from 'next/server';
-import { getSubtitles } from '@treeee/youtube-caption-extractor';
+import { YoutubeTranscript } from 'youtube-transcript';
 
-interface Subtitle {
-  start: string;
-  dur: string;
+interface TranscriptSegment {
+  offset: number;
+  duration: number;
   text: string;
 }
 
-// Create a more browser-like fetch
-const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'DNT': '1',
-    'Connection': 'keep-alive',
-    ...init?.headers // Merge any passed headers
-  };
+// Convert milliseconds to MM:SS format
+function formatTime(milliseconds: number): string {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
-  // First try with our custom headers
-  try {
-    const response = await fetch(input, { ...init, headers });
-    return response;
-  } catch (error) {
-    console.error('Error with custom headers fetch:', error);
-    // Fallback to default fetch if custom headers fail
-    return fetch(input, init);
-  }
-};
-
-// Monkey patch the global fetch for the youtube-caption-extractor package
-const originalFetch = global.fetch;
-global.fetch = customFetch as typeof global.fetch;
+// Clean up text by replacing HTML entities and other common issues
+function cleanText(text: string): string {
+  return text
+    .replace(/&amp;#39;/g, "'")
+    .replace(/&amp;quot;/g, '"')
+    .replace(/&amp;amp;/g, '&')
+    .replace(/&amp;lt;/g, '<')
+    .replace(/&amp;gt;/g, '>')
+    .trim();
+}
 
 export async function POST(req: Request) {
   try {
     const { url } = await req.json();
     
     if (!url) {
-      return NextResponse.json(
-        { error: 'YouTube URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
     // Extract video ID from URL
-    let videoId = '';
-    try {
-      const urlObj = new URL(url);
-      if (urlObj.hostname.includes('youtube.com')) {
-        videoId = urlObj.searchParams.get('v') || '';
-      } else if (urlObj.hostname === 'youtu.be') {
-        videoId = urlObj.pathname.slice(1);
-      }
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid YouTube URL' },
-        { status: 400 }
-      );
-    }
-
+    const videoId = extractVideoId(url);
     if (!videoId) {
-      return NextResponse.json(
-        { error: 'Could not extract video ID from URL' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 });
     }
 
-    // First try: With language specification
-    try {
-      console.log('Attempting to fetch subtitles for:', videoId);
-      const subtitles = await getSubtitles({
-        videoID: videoId,
-        lang: 'en'
-      });
-      
-      if (subtitles && subtitles.length > 0) {
-        console.log('Successfully retrieved subtitles with language specification');
-        const transcript = subtitles.map((subtitle: Subtitle) => subtitle.text).join(' ');
-        // Restore original fetch
-        global.fetch = originalFetch;
-        return NextResponse.json({ transcript });
-      }
-    } catch (error) {
-      console.error('Error with language-specific getSubtitles:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        videoId
-      });
-    }
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    // Format transcript into a readable string with cleaned text and formatted time
+    const formattedTranscript = transcript
+      .map((segment: TranscriptSegment) => `[${formatTime(segment.offset)}] ${cleanText(segment.text)}`)
+      .join('\n');
 
-    // Second try: Without language specification
-    try {
-      console.log('Attempting to fetch subtitles without language specification for:', videoId);
-      const subtitles = await getSubtitles({
-        videoID: videoId
-      });
-      
-      if (subtitles && subtitles.length > 0) {
-        console.log('Successfully retrieved subtitles without language specification');
-        const transcript = subtitles.map((subtitle: Subtitle) => subtitle.text).join(' ');
-        // Restore original fetch
-        global.fetch = originalFetch;
-        return NextResponse.json({ transcript });
-      }
-    } catch (error) {
-      console.error('Error with language-agnostic getSubtitles:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        videoId
-      });
-    }
-
-    // Restore original fetch before returning error
-    global.fetch = originalFetch;
-    return NextResponse.json(
-      { error: 'No captions found for this video' },
-      { status: 404 }
-    );
+    return NextResponse.json({ transcript: formattedTranscript });
   } catch (error) {
-    // Restore original fetch in case of error
-    global.fetch = originalFetch;
-    console.error('Error extracting YouTube captions:', {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack
-      } : 'Unknown error'
-    });
+    console.error('Error fetching transcript:', error);
     return NextResponse.json(
-      { error: 'Failed to extract captions' },
+      { error: 'Failed to fetch transcript' },
       { status: 500 }
     );
   }
-} 
+}
+
+function extractVideoId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    // Handle youtube.com URLs
+    if (urlObj.hostname.includes('youtube.com')) {
+      return urlObj.searchParams.get('v');
+    }
+    // Handle youtu.be URLs
+    if (urlObj.hostname === 'youtu.be') {
+      return urlObj.pathname.slice(1);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
