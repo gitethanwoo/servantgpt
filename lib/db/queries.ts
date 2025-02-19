@@ -15,6 +15,7 @@ import {
   type Message,
   message,
   vote,
+  resource,
 } from './schema';
 import { BlockKind } from '@/components/block';
 
@@ -342,6 +343,59 @@ export async function updateChatVisiblityById({
     return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
   } catch (error) {
     console.error('Failed to update chat visibility in database');
+    throw error;
+  }
+}
+
+export async function saveResource({
+  title,
+  type,
+  url,
+  thumbnailUrl,
+  transcript,
+  summary,
+  tags,
+  tagline,
+  userId,
+}: {
+  title: string;
+  type: 'video' | 'article' | 'podcast';
+  url: string;
+  thumbnailUrl?: string;
+  transcript?: string;
+  summary?: string;
+  tags?: string[];
+  tagline?: string;
+  userId: string;
+}) {
+  try {
+    return await db.insert(resource).values({
+      title,
+      type,
+      url,
+      thumbnailUrl,
+      transcript,
+      summary,
+      tags,
+      tagline,
+      userId,
+      createdAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Failed to save resource in database');
+    throw error;
+  }
+}
+
+export async function getResourcesByUserId(userId: string) {
+  try {
+    return await db
+      .select()
+      .from(resource)
+      .where(eq(resource.userId, userId))
+      .orderBy(desc(resource.createdAt));
+  } catch (error) {
+    console.error('Failed to get resources by user from database');
     throw error;
   }
 }

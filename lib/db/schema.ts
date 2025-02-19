@@ -119,6 +119,7 @@ export const resource = pgTable('Resource', {
   title: text('title').notNull(),
   type: varchar('type', { enum: ['video', 'article', 'podcast'] }).notNull(),
   url: text('url').notNull(),
+  thumbnailUrl: text('thumbnailUrl'),
   transcript: text('transcript'),
   summary: text('summary'),
   tags: json('tags'),

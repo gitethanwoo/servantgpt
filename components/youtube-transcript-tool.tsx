@@ -5,13 +5,16 @@ import { Input } from '@/components/ui/input';
 import { LoaderIcon } from '@/components/icons';
 import { Clipboard } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 export function YoutubeTranscriptTool() {
+  const { data: session } = useSession();
   const [url, setUrl] = useState('');
   const [videoId, setVideoId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
 
   const fetchVideoId = (url: string) => {
     const urlObj = new URL(url);
@@ -27,6 +30,11 @@ export function YoutubeTranscriptTool() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!session?.user?.id) {
+      toast.error('Please sign in to add resources');
+      return;
+    }
+
     if (!url) {
       toast.error('Please enter a YouTube URL');
       return;
@@ -40,33 +48,48 @@ export function YoutubeTranscriptTool() {
 
     setVideoId(id);
     setIsLoading(true);
-    setLoadingStatus('Accessing video...');
     
     try {
-      const eventSource = new EventSource(`/api/tools/youtube?url=${encodeURIComponent(url)}`);
-      
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.status) {
-          setLoadingStatus(data.status);
-        }
-        if (data.transcript) {
-          setTranscript(data.transcript);
-          setIsLoading(false);
-          eventSource.close();
-          toast.success('Transcript extracted successfully');
-        }
-      };
+      const response = await fetch(`/api/tools/youtube?url=${encodeURIComponent(url)}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch transcript');
+      }
 
-      eventSource.onerror = (error) => {
-        console.error('EventSource failed:', error);
-        setIsLoading(false);
-        eventSource.close();
-        toast.error('Failed to extract transcript');
-      };
-    } catch (error) {
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setTranscript(data.transcript);
+      setVideoTitle(data.title);
+      setThumbnailUrl(data.thumbnailUrl);
+
+      // Automatically save the resource
+      const saveResponse = await fetch('/api/resources', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: data.title,
+          type: 'video',
+          url,
+          thumbnailUrl: data.thumbnailUrl,
+          transcript: data.transcript,
+          userId: session.user.id,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save resource');
+      }
+
+      toast.success('Resource added successfully');
       setIsLoading(false);
-      toast.error('Failed to extract transcript');
+    } catch (error) {
+      console.error('Error:', error);
+      setIsLoading(false);
+      toast.error('Failed to add resource');
     }
   };
 
@@ -88,7 +111,7 @@ export function YoutubeTranscriptTool() {
     <div className="w-full max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-2 text-center">YouTube Transcript Tool</h1>
       <p className="text-sm text-center text-muted-foreground mb-6">
-        Extract transcripts from YouTube videos. Note: this tool is not working in production as of Monday, February 10. 
+        Add YouTube videos as resources with their transcripts.
       </p>
 
       <Card className="p-6">
@@ -118,24 +141,15 @@ export function YoutubeTranscriptTool() {
                 {isLoading ? (
                   <>
                     <LoaderIcon size={16} />
-                    Loading...
+                    Adding Resource...
                   </>
                 ) : (
-                  'Extract Transcript'
+                  'Add Resource'
                 )}
               </Button>
             </div>
           </div>
         </form>
-
-        {isLoading && (
-          <div className="mt-4 flex items-center gap-2">
-            <div className="animate-spin">
-              <LoaderIcon size={16} />
-            </div>
-            <span className="text-sm text-muted-foreground">{loadingStatus}</span>
-          </div>
-        )}
 
         {videoId && (
           <div className="mt-6">
@@ -154,7 +168,7 @@ export function YoutubeTranscriptTool() {
 
         {transcript && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Transcript</h3>
+            <h3 className="text-lg font-semibold mb-2">Transcript Preview</h3>
             <pre className="whitespace-pre-wrap bg-muted p-4 rounded-lg text-sm">
               {transcript}
             </pre>

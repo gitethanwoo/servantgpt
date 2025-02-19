@@ -1,0 +1,101 @@
+## Core Architecture
+
+This program uses pnpm as the package manager.
+
+### Authentication
+- Authentication is handled through `@/app/(auth)/auth`
+- Protected routes/actions should use `auth()` to get current session
+- User data structure is in `lib/db/schema.ts` under `user` table
+
+### Database
+- Schema defined in `lib/db/schema.ts`
+- All database queries go in `lib/db/queries.ts`
+- Uses Drizzle ORM with PostgreSQL
+- Migrations handled through drizzle-kit (see Database Schema Updates section)
+
+### API Routes
+- Located in `app/(chat)/api/*`
+- Protected routes should check session with `auth()`
+- Long-running operations use `maxDuration` export
+- Streaming responses use Server-Sent Events (SSE) pattern
+
+### Components
+- UI components in `components/ui/*`
+- Shared components in `components/*`
+- Use shadcn/ui patterns for consistency
+- State management through React hooks
+
+### File Structure
+- `app/` - Next.js app router pages and API routes
+- `components/` - React components
+- `lib/` - Shared utilities and business logic
+  - `lib/db/` - Database related code
+  - `lib/ai/` - AI/ML related code
+  - `lib/utils.ts` - Shared utility functions
+
+### Tools & Services
+- Database: Neon (PostgreSQL)
+- ORM: Drizzle
+- UI: shadcn/ui
+- Auth: Auth.js (NextAuth)
+- AI: OpenAI
+  - Models: 'gpt-4o-latest' and 'gpt-4o-mini'
+  - Embeddings: 'text-embedding-3-small'
+
+### Common Patterns
+1. Database Operations:
+```typescript
+// In lib/db/queries.ts
+export async function someOperation() {
+  try {
+    return await db.operation()
+  } catch (error) {
+    console.error('Failed to perform operation');
+    throw error;
+  }
+}
+```
+
+2. Protected API Routes:
+```typescript
+// In app/(chat)/api/route.ts
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // ... route logic
+}
+```
+
+3. Component with Auth:
+```typescript
+'use client';
+
+import { useSession } from 'next-auth/react';
+
+export function ProtectedComponent() {
+  const { data: session } = useSession();
+  if (!session) return null;
+  // ... component logic
+}
+```
+
+## Database Schema Updates
+
+1. Update schema in `lib/db/schema.ts`
+2. Generate migration:
+```bash
+npx drizzle-kit generate
+```
+3. Test locally:
+```bash
+node lib/db/migrate.ts
+```
+4. Push and deploy to Vercel - migrations will automatically run on Neon database
+5. Changes will reflect in Outerbase automatically. (TO USER: If they don't just run the SQL query in Outerbase.)
+
+Note: If changes don't appear in production, you may need to manually run migrations against Neon by:
+- Temporarily updating `.env.local` with Neon database URL
+- Running `node lib/db/migrate.ts`
+- Switching back to local database URL
