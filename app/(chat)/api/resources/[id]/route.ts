@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { getResourceById } from '@/lib/db/queries';
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: { params: { id: string } }
 ) {
   try {
-    const resource = await getResourceById(params.id);
+    const resource = await getResourceById(context.params.id);
     
     if (!resource) {
       return NextResponse.json(
