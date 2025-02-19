@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
-import { fetchTranscript } from 'youtube-transcript-plus';
 import { chromium } from 'playwright-core';
+
+// Add type declaration for YouTube's window object
+declare global {
+  interface Window {
+    ytInitialPlayerResponse?: {
+      captions?: {
+        playerCaptionsTracklistRenderer?: {
+          captionTracks?: Array<{
+            baseUrl: string;
+            name: { simpleText: string };
+            languageCode: string;
+          }>;
+        };
+      };
+    };
+  }
+}
 
 export const config = {
   runtime: 'nodejs',
@@ -68,29 +84,72 @@ export async function GET(req: Request) {
       const defaultContext = browser.contexts()[0];
       const page = defaultContext.pages()[0];
 
-      // Get transcript
-      const transcript = await fetchTranscript(videoId, {
-        transcriptFetch: async ({ url, userAgent }) => {
-          // First navigate to a blank page to ensure we're in a clean state
-          await page.goto('about:blank');
-          
-          // Use the page's fetch directly, which will use the browser's network stack
-          const response = await page.request.fetch(url, {
-            headers: {
-              'Accept-Language': 'en',
-              'User-Agent': userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            }
-          });
-
-          const text = await response.text();
-          // Decode HTML entities in the raw response before it's processed
-          const decodedText = decodeHTMLEntities(text);
-          return new Response(decodedText, {
-            status: response.status(),
-            headers: response.headers()
-          });
-        },
+      // Block unnecessary resources
+      await page.route('**/*', async (route) => {
+        const request = route.request();
+        const resourceType = request.resourceType();
+        
+        // Only allow document and script resources, block everything else
+        if (resourceType === 'document' || resourceType === 'script') {
+          // For scripts, only allow those that might contain the player response
+          if (resourceType === 'script' && !request.url().includes('base.js')) {
+            return route.abort();
+          }
+          return route.continue();
+        }
+        
+        // Block all other resource types
+        return route.abort();
       });
+
+      // Set a shorter timeout since we're only interested in the initial data
+      page.setDefaultTimeout(10000);
+
+      // Load the page with minimal features
+      await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {
+        waitUntil: 'domcontentloaded', // Don't wait for full page load
+      });
+      
+      // Extract captions data as soon as it's available
+      const captionsData = await page.evaluate(() => {
+        const maxAttempts = 10;
+        let attempts = 0;
+        
+        return new Promise<{ baseUrl: string } | null>((resolve) => {
+          const checkData = () => {
+            attempts++;
+            const ytInitialPlayerResponse = window.ytInitialPlayerResponse;
+            if (ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks) {
+              resolve(ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks[0]);
+            } else if (attempts < maxAttempts) {
+              setTimeout(checkData, 100);
+            } else {
+              resolve(null);
+            }
+          };
+          checkData();
+        });
+      });
+
+      if (!captionsData) {
+        return NextResponse.json({ error: 'No captions available' }, { status: 404 });
+      }
+
+      // Fetch the caption track XML
+      const response = await page.request.fetch(captionsData.baseUrl);
+      const xmlText = await response.text();
+      
+      // Parse the XML to extract timed text
+      const transcript: { offset: number; text: string }[] = [];
+      const regex = /<text start="([^"]*)"[^>]*>([^<]*)<\/text>/g;
+      let match;
+      
+      while ((match = regex.exec(xmlText)) !== null) {
+        transcript.push({
+          offset: parseFloat(match[1]),
+          text: decodeHTMLEntities(match[2].trim())
+        });
+      }
 
       const formattedTranscript = transcript
         .map(segment => `[${new Date(segment.offset * 1000).toISOString().substr(11, 8)}] ${segment.text}`)

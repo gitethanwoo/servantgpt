@@ -140,7 +140,9 @@ export function YoutubeTranscriptTool() {
               >
                 {isLoading ? (
                   <>
-                    <LoaderIcon size={16} />
+                    <div className="animate-spin">
+                      <LoaderIcon size={16} />
+                    </div>
                     Adding Resource...
                   </>
                 ) : (
