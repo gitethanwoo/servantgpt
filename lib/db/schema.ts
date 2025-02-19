@@ -113,3 +113,16 @@ export const suggestion = pgTable(
 );
 
 export type Suggestion = InferSelectModel<typeof suggestion>;
+
+export const resource = pgTable('Resource', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  title: text('title').notNull(),
+  type: varchar('type', { enum: ['video', 'article', 'podcast'] }).notNull(),
+  url: text('url').notNull(),
+  transcript: text('transcript'),
+  summary: text('summary'),
+  tags: json('tags'),
+  tagline: text('tagline'),
+  userId: uuid('userId').notNull().references(() => user.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});

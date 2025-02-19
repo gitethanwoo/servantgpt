@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LoaderIcon, CopyIcon } from '@/components/icons';
+import { LoaderIcon } from '@/components/icons';
 import { Clipboard } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -10,6 +10,8 @@ export function YoutubeTranscriptTool() {
   const [url, setUrl] = useState('');
   const [videoId, setVideoId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
+  const [transcript, setTranscript] = useState('');
 
   const fetchVideoId = (url: string) => {
     const urlObj = new URL(url);
@@ -31,11 +33,40 @@ export function YoutubeTranscriptTool() {
     }
 
     const id = fetchVideoId(url);
-    if (id) {
-      setVideoId(id);
-      toast.success('Video embedded successfully');
-    } else {
+    if (!id) {
       toast.error('Invalid YouTube URL');
+      return;
+    }
+
+    setVideoId(id);
+    setIsLoading(true);
+    setLoadingStatus('Accessing video...');
+    
+    try {
+      const eventSource = new EventSource(`/api/tools/youtube?url=${encodeURIComponent(url)}`);
+      
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.status) {
+          setLoadingStatus(data.status);
+        }
+        if (data.transcript) {
+          setTranscript(data.transcript);
+          setIsLoading(false);
+          eventSource.close();
+          toast.success('Transcript extracted successfully');
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource failed:', error);
+        setIsLoading(false);
+        eventSource.close();
+        toast.error('Failed to extract transcript');
+      };
+    } catch (error) {
+      setIsLoading(false);
+      toast.error('Failed to extract transcript');
     }
   };
 
@@ -90,25 +121,43 @@ export function YoutubeTranscriptTool() {
                     Loading...
                   </>
                 ) : (
-                  'Embed Video'
+                  'Extract Transcript'
                 )}
               </Button>
             </div>
           </div>
         </form>
 
+        {isLoading && (
+          <div className="mt-4 flex items-center gap-2">
+            <div className="animate-spin">
+              <LoaderIcon size={16} />
+            </div>
+            <span className="text-sm text-muted-foreground">{loadingStatus}</span>
+          </div>
+        )}
+
         {videoId && (
           <div className="mt-6">
-            <div className="aspect-w-16 aspect-h-9">
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${videoId}`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
-                className="w-full h-full"
+                className="absolute top-0 left-0 size-full"
               ></iframe>
             </div>
+          </div>
+        )}
+
+        {transcript && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Transcript</h3>
+            <pre className="whitespace-pre-wrap bg-muted p-4 rounded-lg text-sm">
+              {transcript}
+            </pre>
           </div>
         )}
       </Card>
