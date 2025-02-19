@@ -4,6 +4,7 @@ import { ResourceCard } from '@/components/resource-card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+
 function Pagination({ totalPages, currentPage }: { totalPages: number; currentPage: number }) {
   return (
     <div className="flex justify-center gap-2 mt-8">
@@ -50,9 +51,10 @@ async function ResourceGrid({ page }: { page: number }) {
 export default async function LearnPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }) {
-  const page = Number(searchParams.page) || 1;
+  const { page: pageParam } = await searchParams;
+  const page = Number(pageParam) || 1;
 
   return (
     <div className="container max-w-7xl mx-auto p-6">
