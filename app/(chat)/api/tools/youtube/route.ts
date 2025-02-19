@@ -70,32 +70,30 @@ export async function GET(req: Request) {
 
       // Get transcript
       const transcript = await fetchTranscript(videoId, {
-        transcriptFetch: async ({ url, lang, userAgent }) => {
-          const response = await page.evaluate(async ({ url, headers }) => {
-            const res = await fetch(url, { headers });
-            const text = await res.text();
-            return { 
-              text,
-              status: res.status,
-              headers: Object.fromEntries(res.headers.entries())
-            };
-          }, { 
-            url,
+        transcriptFetch: async ({ url, userAgent }) => {
+          // First navigate to a blank page to ensure we're in a clean state
+          await page.goto('about:blank');
+          
+          // Use the page's fetch directly, which will use the browser's network stack
+          const response = await page.request.fetch(url, {
             headers: {
-              ...(lang && { 'Accept-Language': lang }),
-              'User-Agent': userAgent || 'Mozilla/5.0',
+              'Accept-Language': 'en',
+              'User-Agent': userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             }
           });
 
-          return new Response(response.text, {
-            status: response.status,
-            headers: new Headers(response.headers),
+          const text = await response.text();
+          // Decode HTML entities in the raw response before it's processed
+          const decodedText = decodeHTMLEntities(text);
+          return new Response(decodedText, {
+            status: response.status(),
+            headers: response.headers()
           });
         },
       });
 
       const formattedTranscript = transcript
-        .map(segment => `[${new Date(segment.offset * 1000).toISOString().substr(11, 8)}] ${decodeHTMLEntities(segment.text)}`)
+        .map(segment => `[${new Date(segment.offset * 1000).toISOString().substr(11, 8)}] ${segment.text}`)
         .join('\n');
 
       return NextResponse.json({

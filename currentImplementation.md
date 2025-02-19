@@ -8,14 +8,18 @@
 │       │   └── tools/
 │       │       └── youtube/
 │       │           └── route.ts ✅
+│       │   └── resources/
+│       │       └── route.ts ✅
+│       │       └── [id]/
+│       │           └── route.ts ✅
 │       └── learn/
-│           ├── page.tsx
+│           ├── page.tsx ⬜
 │           └── [id]/
-│               └── page.tsx
+│               └── page.tsx ⬜
 ├── components/
 │   ├── youtube-transcript-tool.tsx ✅
-│   ├── resource-card.tsx
-│   └── resource-viewer.tsx
+│   ├── resource-card.tsx ⬜
+│   └── resource-viewer.tsx ⬜
 └── lib/
     └── db/
         ├── schema.ts ✅
@@ -29,15 +33,15 @@ The absolute core of this feature is: "Can we save a YouTube video with its tran
 
 Critical Path:
 1. ✅ Save a resource to database (with user authentication)
-2. Retrieve a resource from database
-3. Display a resource (video + transcript)
+2. ✅ Retrieve a resource from database
+3. ⬜ Display a resource (video + transcript)
 
 ### User Journey
 1. ✅ Find and input a YouTube video
 2. ✅ Extract transcript and metadata
 3. ✅ Save to resources (requires auth)
-4. Browse saved resources
-5. View detailed resource
+4. ⬜ Browse saved resources
+5. ⬜ View detailed resource
 
 ## Implementation Order
 
@@ -48,37 +52,41 @@ Critical Path:
    - Test with authenticated console script ✅
    - Verify data persistence ✅
 
-2. Basic Resource Display
-   - Minimal viewer component
-   - Test video embedding
-   - Test transcript display
-
-
-### Phase 2: Critical Path
-1. YouTube Tool Enhancement ✅
+2. YouTube Tool Enhancement ✅
    - Metadata extraction ✅
    - Basic save functionality ✅
    - Auth integration for saving ✅
    - Verify end-to-end flow with auth ✅
 
-2. Resource Browsing
+### Phase 2: Resource Access Layer ✅
+1. API Routes ✅
+   - GET /api/resources (list) ✅
+   - GET /api/resources/[id] (detail) ✅
+   - POST /api/resources (create) ✅
+   - Add pagination support ✅
+   - Add error handling ✅
+
+### Phase 3: Frontend (Next Steps) ⬜
+1. Resource List Page
    - Basic list view with user context
    - Click-through to detail
    - Verify navigation flow
    - Add auth middleware if needed
 
-### Phase 3: Enhancement
-1. UI Polish
+2. Resource Detail Page
+   - Video embed
+   - Transcript display
+   - Navigation back to list
+   - Error states
+
+3. UI Polish
    - Resource cards
    - Grid layout
    - Loading states
+   - Success/error messages
 
-2. User Experience
-   - Error handling
-   - Success messages
-   - Auth integration
-
-3. Additional Features
+### Phase 4: Enhancement (Future) ⬜
+1. User Experience
    - Filtering
    - Search
    - Pagination

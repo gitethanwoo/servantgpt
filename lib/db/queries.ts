@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { genSaltSync, hashSync } from 'bcrypt-ts';
-import { and, asc, desc, eq, gt, gte, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -396,6 +396,44 @@ export async function getResourcesByUserId(userId: string) {
       .orderBy(desc(resource.createdAt));
   } catch (error) {
     console.error('Failed to get resources by user from database');
+    throw error;
+  }
+}
+
+export async function getResources(page = 1, limit = 10) {
+  try {
+    const offset = (page - 1) * limit;
+    const resources = await db
+      .select()
+      .from(resource)
+      .orderBy(desc(resource.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(resource);
+
+    return {
+      resources,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+    };
+  } catch (error) {
+    console.error('Failed to get resources from database');
+    throw error;
+  }
+}
+
+export async function getResourceById(id: string) {
+  try {
+    const [selectedResource] = await db
+      .select()
+      .from(resource)
+      .where(eq(resource.id, id));
+    return selectedResource;
+  } catch (error) {
+    console.error('Failed to get resource by id from database');
     throw error;
   }
 }
