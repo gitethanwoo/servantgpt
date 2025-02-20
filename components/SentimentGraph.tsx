@@ -11,7 +11,7 @@ import {
     ReferenceLine,
 } from 'recharts';
 
-type SentimentResult = {
+export type SentimentResult = {
     timestampStart: string;
     relevantText: string;
     sentimentCommentary: string;
@@ -40,7 +40,7 @@ const sentimentToValue = (sentiment: string): number => {
 };
 
 // Format timestamp to MM:SS
-const formatTime = (timestamp: string): string => {
+export const formatTime = (timestamp: string): string => {
     // Remove the brackets and return the time
     return timestamp.replace(/[\[\]]/g, '');
 };

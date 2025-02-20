@@ -2,10 +2,11 @@
 
 import { experimental_useObject as useObject } from 'ai/react';
 import { z } from 'zod';
-import SentimentGraph from './SentimentGraph';
+import SentimentGraph, { formatTime, type SentimentResult } from './SentimentGraph';
 
 const sentimentSchema = z.object({
-    timestampStart: z.number(),
+    timestampStart: z.string()
+        .regex(/^\[\d{2}:\d{2}:\d{2}\]$/, "Must be in format [HH:MM:SS]"),
     relevantText: z.string(),
     sentimentCommentary: z.string(),
     sentimentDescriptor: z.string(),
@@ -17,6 +18,8 @@ export default function SentimentAnalyzer() {
         api: '/api/tools/sentiment',
         schema: z.array(sentimentSchema),
     });
+
+    const validResults = results?.filter((r): r is SentimentResult => r !== undefined) || [];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,20 +54,20 @@ export default function SentimentAnalyzer() {
 
             {results && (
                 <div className="mt-8 space-y-8">
-                    <SentimentGraph results={results} />
+                    <SentimentGraph results={validResults} />
                     
                     <div className="space-y-6">
                         <h2 className="text-lg font-semibold">Detailed Analysis</h2>
-                        {results.map((result, index) => (
+                        {validResults.map((result, index) => (
                             <div key={index} className="border p-4 rounded">
                                 <div className="font-bold">
                                     {result.sentimentDescriptor} ({result.sentiment})
                                 </div>
                                 <div className="text-sm text-gray-600">
-                                    at {result.timestampStart}s
+                                    at {formatTime(result.timestampStart)}
                                 </div>
                                 <div className="mt-2 italic">
-                                    "{result.relevantText}"
+                                    &ldquo;{result.relevantText}&rdquo;
                                 </div>
                                 <div className="mt-2">
                                     {result.sentimentCommentary}
