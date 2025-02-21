@@ -1,3 +1,4 @@
+import { ReactScan } from '@/components/reactscan';
 import type { Metadata } from 'next';
 import { ClientProviders } from '@/components/providers/client-providers';
 
@@ -41,17 +42,22 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      
       // `next-themes` injects an extra classname to the body element to avoid
       // visual flicker before hydration. Hence the `suppressHydrationWarning`
       // prop is necessary to avoid the React hydration mismatch warning.
       // https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
       suppressHydrationWarning
     >
+            <ReactScan />
+
       <head>
+        
         <script
           dangerouslySetInnerHTML={{
             __html: THEME_COLOR_SCRIPT,
           }}
+          
         />
       </head>
       <body className="antialiased">

@@ -176,3 +176,27 @@
 .suggestion-highlight {
     @apply bg-blue-200 hover:bg-blue-300 dark:hover:bg-blue-400/50 dark:text-blue-50 dark:bg-blue-500/40;
 }
+
+/* Add these table-specific styles */
+.table-fixed {
+    table-layout: fixed;
+  }
+  
+  /* Optional: Add custom scrollbar styles for the table container */
+  .table-scroll {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  
+  .table-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .table-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 4px;
+  } 
