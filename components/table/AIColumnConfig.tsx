@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ColumnDef } from "@tanstack/react-table";
 import { TableData } from "./DataTable";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Define a more specific type for our column definition
 type TableColumnDef = ColumnDef<TableData, any> & {
@@ -62,65 +63,6 @@ interface AIColumnConfigProps {
   onCreate?: (name: string, prompt: string, position: "left" | "right", referenceColumnId: string) => void;
 }
 
-// Memoized column button component
-const ColumnButton = memo(function ColumnButton({
-  columnId,
-  label,
-  onClick
-}: {
-  columnId: string;
-  label: string;
-  onClick: (columnId: string) => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      className="w-full justify-start font-normal rounded-sm h-9 px-3 hover:bg-accent text-left truncate"
-      onClick={() => onClick(columnId)}
-    >
-      {label}
-    </Button>
-  );
-});
-
-// Memoized available columns section
-const AvailableColumns = memo(function AvailableColumns({
-  availableColumns,
-  onColumnClick
-}: {
-  availableColumns: TableColumnDef[];
-  onColumnClick: (columnId: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">Available Columns</Label>
-        <span className="text-xs text-muted-foreground">Click to reference</span>
-      </div>
-      <div className="relative">
-        <ScrollArea className="h-[200px] w-full rounded-md border bg-muted/5">
-          <div className="p-2 flex flex-col gap-1">
-            {availableColumns.map((col) => {
-              const columnId = col.accessorKey?.toString();
-              if (!columnId) return null;
-              
-              const label = col.header?.toString() || columnId;
-              return (
-                <ColumnButton
-                  key={columnId}
-                  columnId={columnId}
-                  label={label}
-                  onClick={onColumnClick}
-                />
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
-    </div>
-  );
-});
-
 // Memoized name input component
 const NameInput = memo(function NameInput({
   initialValue,
@@ -154,104 +96,168 @@ const NameInput = memo(function NameInput({
   );
 });
 
-// Memoized prompt input component
+// Memoized template section component
+const TemplateSection = memo(function TemplateSection({
+  value,
+  onChange,
+  placeholder,
+  label
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Textarea
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-[80px] resize-none"
+      />
+    </div>
+  );
+});
+
+// Memoized column reference section
+const ColumnReferenceSection = memo(function ColumnReferenceSection({
+  columns,
+  selectedColumns,
+  onToggleColumn
+}: {
+  columns: TableColumnDef[];
+  selectedColumns: Set<string>;
+  onToggleColumn: (columnId: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">Referenced Columns</Label>
+      <ScrollArea className="h-[200px] w-full rounded-md border bg-muted/5">
+        <div className="p-2 grid grid-cols-1 gap-1.5">
+          {columns.map((col) => {
+            const columnId = col.accessorKey?.toString();
+            if (!columnId) return null;
+            
+            const isSelected = selectedColumns.has(columnId);
+            return (
+              <Button
+                key={columnId}
+                variant={isSelected ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-auto min-h-[24px] py-1 px-2 text-xs justify-start font-normal whitespace-normal text-left",
+                  isSelected && "bg-primary/20 hover:bg-primary/30"
+                )}
+                onClick={() => onToggleColumn(columnId)}
+              >
+                {columnId}
+              </Button>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+});
+
+// Replace the existing PromptInput with this new version
 const PromptInput = memo(function PromptInput({
   initialValue,
   onPromptChange,
-  children
+  availableColumns
 }: {
   initialValue: string;
   onPromptChange: (value: string) => void;
-  children?: React.ReactNode;
+  availableColumns: TableColumnDef[];
 }) {
-  const [localPrompt, setLocalPrompt] = React.useState(initialValue);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-
+  // Track selected columns and template sections
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+  const [prePrompt, setPrePrompt] = useState("");
+  const [postPrompt, setPostPrompt] = useState("");
+  
+  // Initialize from initial value if it exists
   React.useEffect(() => {
-    setLocalPrompt(initialValue);
+    if (initialValue) {
+      // Extract column references and text sections
+      const regex = /{{([^}]+)}}/g;
+      const columns = new Set<string>();
+      let match;
+      
+      while ((match = regex.exec(initialValue)) !== null) {
+        columns.add(match[1].trim());
+      }
+      
+      setSelectedColumns(columns);
+      
+      // Split the text sections
+      const parts = initialValue.split(/{{[^}]+}}/);
+      setPrePrompt(parts[0]?.trim() || "");
+      setPostPrompt(parts[1]?.trim() || "");
+    }
   }, [initialValue]);
 
-  // Parse the prompt to find column references
-  const segments = React.useMemo(() => {
-    const regex = /{{([^}]+)}}/g;
-    const parts: { type: 'text' | 'column'; content: string }[] = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(localPrompt)) !== null) {
-      // Add text before the match
-      if (match.index > lastIndex) {
-        parts.push({
-          type: 'text',
-          content: localPrompt.slice(lastIndex, match.index)
-        });
-      }
-      // Add the column reference
-      parts.push({
-        type: 'column',
-        content: match[1].trim()
-      });
-      lastIndex = regex.lastIndex;
-    }
-    // Add remaining text
-    if (lastIndex < localPrompt.length) {
-      parts.push({
-        type: 'text',
-        content: localPrompt.slice(lastIndex)
-      });
-    }
-    return parts;
-  }, [localPrompt]);
-
-  const handleDelete = React.useCallback((index: number) => {
-    const newSegments = [...segments];
-    const deletedSegment = newSegments[index];
+  // Update the full prompt when any section changes
+  const updateFullPrompt = useCallback(() => {
+    const columnRefs = Array.from(selectedColumns)
+      .map(col => `{{${col}}}`)
+      .join(" ");
     
-    if (deletedSegment.type === 'column') {
-      // Simply filter out the segment and join the rest
-      const updatedPrompt = segments
-        .filter((_, i) => i !== index)
-        .map(s => s.type === 'column' ? `{{${s.content}}}` : s.content)
-        .join('')
-        .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
-        .trim();
-      
-      setLocalPrompt(updatedPrompt);
-      onPromptChange(updatedPrompt);
-    }
-  }, [segments, onPromptChange]);
+    const parts = [
+      prePrompt.trim(),
+      columnRefs,
+      postPrompt.trim()
+    ].filter(Boolean);
+    
+    onPromptChange(parts.join(" "));
+  }, [prePrompt, postPrompt, selectedColumns, onPromptChange]);
+
+  // Update when any section changes
+  React.useEffect(() => {
+    updateFullPrompt();
+  }, [prePrompt, postPrompt, selectedColumns, updateFullPrompt]);
+
+  const handleToggleColumn = useCallback((columnId: string) => {
+    setSelectedColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(columnId)) {
+        next.delete(columnId);
+      } else {
+        next.add(columnId);
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="space-y-4">
-      {children}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">AI Prompt</Label>
-        <div className="relative min-h-[150px] rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-          <Textarea
-            ref={textareaRef}
-            placeholder="Enter your prompt... Click column names above to reference them"
-            value={localPrompt}
-            onChange={(e) => {
-              setLocalPrompt(e.target.value);
-              onPromptChange(e.target.value);
-            }}
-            className="absolute inset-0 opacity-0 pointer-events-none"
-          />
-          <div className="relative whitespace-pre-wrap break-words flex flex-wrap gap-y-1 [&>span]:leading-relaxed">
-            {segments.map((segment, index) => (
-              segment.type === 'column' ? (
-                <ColumnChip
-                  key={index}
-                  columnId={segment.content}
-                  onDelete={() => handleDelete(index)}
-                />
-              ) : (
-                <span key={index} className="inline-block pointer-events-none">{segment.content}</span>
-              )
-            ))}
-          </div>
-        </div>
+      <div>
+        <Label className="text-sm font-medium">AI Prompt Template</Label>
+        <p className="text-sm text-muted-foreground mt-1">
+          Build your prompt by combining text and column references
+        </p>
       </div>
+      
+      <TemplateSection
+        label="Before Columns"
+        value={prePrompt}
+        onChange={setPrePrompt}
+        placeholder="Enter text that should appear before column references..."
+      />
+      
+      <ColumnReferenceSection
+        columns={availableColumns}
+        selectedColumns={selectedColumns}
+        onToggleColumn={handleToggleColumn}
+      />
+      
+      <TemplateSection
+        label="After Columns"
+        value={postPrompt}
+        onChange={setPostPrompt}
+        placeholder="Enter text that should appear after column references..."
+      />
     </div>
   );
 });
@@ -336,14 +342,8 @@ export function AIColumnConfig({
         <PromptInput
           initialValue={prompt}
           onPromptChange={setPrompt}
-        >
-          <AvailableColumns 
-            availableColumns={availableColumns}
-            onColumnClick={(columnId) => {
-              setPrompt(prev => prev + ` {{${columnId}}}`);
-            }}
-          />
-        </PromptInput>
+          availableColumns={availableColumns}
+        />
       </div>
       <div className="border-t p-4">
         <Button 

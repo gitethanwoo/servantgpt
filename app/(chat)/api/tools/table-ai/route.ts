@@ -20,8 +20,7 @@ export async function POST(req: Request) {
       model: openai("gpt-4o-mini"),
       system: "You are a helpful AI assistant that processes data in table cells. Keep your responses concise and focused on the task.",
       prompt,
-      temperature: 0.7,
-      maxTokens: 150,
+      maxTokens: 400,
     });
 
     return response.toDataStreamResponse();
