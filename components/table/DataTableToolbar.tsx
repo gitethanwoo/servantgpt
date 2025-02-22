@@ -1,20 +1,17 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useCSVParser } from "./useCSVParser";
-import { TableData } from "./DataTable";
-import { ColumnDef } from "@tanstack/react-table";
-import { EditableCell } from "./editableCell";
+import { TableData, TableColumnDef } from "./types";
 
 interface DataTableToolbarProps {
-  data: TableData[];
-  columns: ColumnDef<TableData, any>[];
-  onCSVUpload: (data: TableData[], columns: ColumnDef<TableData, any>[]) => void;
-  onAddColumn: (position: "left" | "right", referenceColumnId?: string) => void;
+  onCSVUpload: (data: TableData[], columns: TableColumnDef[]) => void;
 }
 
-export function DataTableToolbar({ data, columns, onCSVUpload, onAddColumn }: DataTableToolbarProps) {
+export const DataTableToolbar = memo(function DataTableToolbar({ 
+  onCSVUpload, 
+}: DataTableToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { parseCSV } = useCSVParser();
 
@@ -22,7 +19,9 @@ export function DataTableToolbar({ data, columns, onCSVUpload, onAddColumn }: Da
     const file = event.target.files?.[0];
     if (file) {
       try {
+        console.log('CSV Upload - Starting parse of file:', file.name);
         const { data, columns } = await parseCSV(file);
+        console.log('CSV Upload - Parse successful:', { dataLength: data.length, columnsLength: columns.length });
         onCSVUpload(data, columns);
       } catch (error) {
         console.error('Failed to parse CSV:', error);
@@ -51,4 +50,4 @@ export function DataTableToolbar({ data, columns, onCSVUpload, onAddColumn }: Da
       </Button>
     </div>
   );
-}
+});

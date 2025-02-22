@@ -1,69 +1,73 @@
-import { memo, useState } from "react";
-import { CellContext } from "@tanstack/react-table";
-import { TableData } from "./DataTable";
+import { memo, useState, useCallback } from "react";
+import { useCompletion } from "ai/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
-import { useCompletion } from "ai/react";
-
-interface AICellProps extends CellContext<TableData, any> {}
+import { CellProps, ColumnMeta } from "./types";
 
 export const AICell = memo(function AICell({ 
   getValue, 
   row, 
   column, 
   table 
-}: AICellProps) {
-  const initialValue = getValue();
-  const [value, setValue] = useState(initialValue?.toString() ?? "");
+}: CellProps) {
+  const [value, setValue] = useState(getValue()?.toString() ?? "");
   const [isEditing, setIsEditing] = useState(false);
 
   const { complete, isLoading } = useCompletion({
     api: '/api/tools/table-ai',
-    onResponse: (response) => {
-      // This is called when the API returns a response
-      if (!response.ok) {
-        throw new Error('Failed to generate completion');
+    onFinish: (_, completion) => {
+      if (completion && table.options.meta?.updateData) {
+        setValue(completion);
+        table.options.meta.updateData(row.index, column.columnDef.accessorKey, completion);
       }
-    },
-    onFinish: (prompt, completion) => {
-      // This is called when the completion is done
-      setValue(completion);
-      (table.options.meta as any)?.updateData(row.index, column.id, completion);
     },
     onError: (error) => {
       console.error('Error processing AI prompt:', error);
       setValue('Error');
-      (table.options.meta as any)?.updateData(row.index, column.id, 'Error');
+      if (table.options.meta?.updateData) {
+        table.options.meta.updateData(row.index, column.columnDef.accessorKey, 'Error');
+      }
     }
   });
 
-  const processCell = async () => {
-    const prompt = (column.columnDef.meta as any)?.prompt;
-    if (!prompt) {
-      console.error('No prompt configured');
-      return;
-    }
+  const processCell = useCallback(async () => {
+    const prompt = column.columnDef.meta?.prompt;
+    if (!prompt) return;
 
-    // Replace {{columnId}} references with actual values
-    const resolvedPrompt = prompt.replace(/\{\{(.*?)\}\}/g, (_: string, colId: string) => {
-      return row.getValue(colId)?.toString() || '';
+    // Resolve column references in the prompt
+    const resolvedPrompt = prompt.replace(/\{\{([^}]+)\}\}/g, (_, columnId) => {
+      const cleanColumnId = columnId.trim();
+      const targetColumn = table.getColumn(cleanColumnId);
+      if (!targetColumn) return columnId;
+
+      const rawValue = row.getValue(cleanColumnId);
+      const value = typeof rawValue === 'object' ? JSON.stringify(rawValue) : rawValue;
+      const header = (targetColumn.columnDef.meta as ColumnMeta)?.headerText ?? cleanColumnId;
+      
+      return `${header}: "${value}"`;
     });
 
     await complete(resolvedPrompt);
-  };
+  }, [column.columnDef.meta?.prompt, complete, row, table]);
+
+  // Watch for column process triggers
+  const columnProcessTrigger = table.options.meta?.columnProcessTrigger;
+  if (columnProcessTrigger?.columnId === column.columnDef.accessorKey && !isLoading) {
+    processCell();
+  }
 
   const onBlur = () => {
     setIsEditing(false);
-    if (value !== initialValue?.toString()) {
+    const initialValue = getValue();
+    if (value !== initialValue?.toString() && table.options.meta?.updateData) {
       const newValue = typeof initialValue === 'number' ? Number(value) : value;
-      (table.options.meta as any)?.updateData(row.index, column.id, newValue);
+      table.options.meta.updateData(row.index, column.columnDef.accessorKey, newValue);
     }
   };
 
   return (
     <div className="relative size-full group">
-      {/* Non-editing state with process button */}
       {!isEditing && (
         <div className="absolute inset-0 flex items-center">
           <div 
@@ -93,7 +97,6 @@ export const AICell = memo(function AICell({
         </div>
       )}
       
-      {/* Editing state */}
       {isEditing && (
         <input
           value={value}
@@ -116,6 +119,6 @@ export const AICell = memo(function AICell({
   return (
     prev.getValue()?.toString() === next.getValue()?.toString() &&
     prev.row.index === next.row.index &&
-    prev.column.id === next.column.id
+    prev.column.columnDef.accessorKey === next.column.columnDef.accessorKey
   );
 }); 

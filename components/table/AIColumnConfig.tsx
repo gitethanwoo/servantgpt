@@ -1,67 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ColumnDef } from "@tanstack/react-table";
-import { TableData } from "./DataTable";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { TableData, AIColumnConfigProps, TableColumnDef } from "./types";
+import { X, Check } from "lucide-react";
 
-// Define a more specific type for our column definition
-type TableColumnDef = ColumnDef<TableData, any> & {
-  accessorKey?: string;
-  meta?: {
-    type?: 'regular' | 'ai';
-    prompt?: string;
-  };
-};
-
-// Memoized column chip component
-const ColumnChip = memo(function ColumnChip({
-  columnId,
-  onDelete
-}: {
-  columnId: string;
-  onDelete: () => void;
-}) {
-  return (
-    <span 
-      className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-500 rounded-md px-1.5 py-0.5 text-sm font-medium group mx-0.5 hover:bg-blue-500/20 transition-colors cursor-default"
-    >
-      <span className="pointer-events-none">{columnId}</span>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="opacity-50 hover:opacity-100 focus:opacity-100 cursor-pointer"
-      >
-        <X className="size-3" />
-      </button>
-    </span>
-  );
-});
-
-interface AIColumnConfigProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  columns: TableColumnDef[];
-  // Make these optional since we might be creating a new column
-  currentColumnId?: string;
-  currentPrompt?: string;
-  position?: "left" | "right";
-  referenceColumnId?: string;
-  // Separate handlers for create vs update
-  onSave?: (columnId: string, prompt: string) => void;
-  onCreate?: (name: string, prompt: string, position: "left" | "right", referenceColumnId: string) => void;
-}
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command"
+import { Badge } from "@/components/ui/badge";
 
 // Memoized name input component
 const NameInput = memo(function NameInput({
@@ -131,33 +90,108 @@ const ColumnReferenceSection = memo(function ColumnReferenceSection({
   selectedColumns: Set<string>;
   onToggleColumn: (columnId: string) => void;
 }) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredColumns = useMemo(() => {
+    if (!searchTerm) return columns;
+    return columns.filter(col => {
+      const accessorKey = col.accessorKey?.toLowerCase() || '';
+      const header = (typeof col.header === 'string' ? col.header : '').toLowerCase();
+      const search = searchTerm.toLowerCase();
+      return accessorKey.includes(search) || header.includes(search);
+    });
+  }, [columns, searchTerm]);
+
+  const getColumnDisplayName = useCallback((col: TableColumnDef) => {
+    if (typeof col.header === 'string') return col.header;
+    return col.accessorKey || col.id || '';
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    const columnsToToggle = filteredColumns
+      .map(col => col.accessorKey)
+      .filter((key): key is string => typeof key === 'string');
+    
+    const allSelected = columnsToToggle.every(col => selectedColumns.has(col));
+    
+    columnsToToggle.forEach(col => {
+      if (allSelected) {
+        onToggleColumn(col);
+      } else if (!selectedColumns.has(col)) {
+        onToggleColumn(col);
+      }
+    });
+  }, [filteredColumns, selectedColumns, onToggleColumn]);
+
+  const allFilteredSelected = useMemo(() => {
+    return filteredColumns
+      .map(col => col.accessorKey)
+      .filter((key): key is string => typeof key === 'string')
+      .every(col => selectedColumns.has(col));
+  }, [filteredColumns, selectedColumns]);
+
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">Referenced Columns</Label>
-      <ScrollArea className="h-[200px] w-full rounded-md border bg-muted/5">
-        <div className="p-2 grid grid-cols-1 gap-1.5">
-          {columns.map((col) => {
-            const columnId = col.accessorKey?.toString();
-            if (!columnId) return null;
-            
-            const isSelected = selectedColumns.has(columnId);
-            return (
-              <Button
-                key={columnId}
-                variant={isSelected ? "secondary" : "ghost"}
-                size="sm"
-                className={cn(
-                  "h-auto min-h-[24px] py-1 px-2 text-xs justify-start font-normal whitespace-normal text-left",
-                  isSelected && "bg-primary/20 hover:bg-primary/30"
-                )}
-                onClick={() => onToggleColumn(columnId)}
-              >
-                {columnId}
-              </Button>
-            );
-          })}
-        </div>
-      </ScrollArea>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground pb-2">Referenced Columns</Label>
+        {selectedColumns.size > 0 && (
+          <Badge variant="outline" className="text-xs font-normal text-emerald-600">
+            {selectedColumns.size} column{selectedColumns.size === 1 ? '' : 's'} selected
+          </Badge>
+        )}
+      </div>
+      <Command className="rounded-md border">
+        <CommandInput 
+          placeholder="Search columns..." 
+          value={searchTerm}
+          onValueChange={setSearchTerm}
+        />
+        <CommandList className="max-h-[200px]">
+          <CommandEmpty>No columns found.</CommandEmpty>
+          <CommandGroup className="bg-muted/50 px-1 py-0.5">
+            <CommandItem
+              onSelect={handleSelectAll}
+              className="font-medium aria-selected:bg-primary/10"
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="w-4 shrink-0">
+                  {allFilteredSelected && <Check className="size-4 text-emerald-600" />}
+                </span>
+                <span className="flex-1 truncate">
+                  {allFilteredSelected ? 'Deselect All' : 'Select All'}
+                </span>
+              </div>
+            </CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup>
+            {filteredColumns.map((col) => {
+              const columnId = col.accessorKey;
+              if (!columnId) return null;
+              
+              const isSelected = selectedColumns.has(columnId);
+              const displayName = getColumnDisplayName(col);
+              
+              return (
+                <CommandItem
+                  key={columnId}
+                  value={columnId}
+                  onSelect={() => onToggleColumn(columnId)}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="w-4 shrink-0">
+                      {isSelected && <Check className="size-4 text-emerald-600" />}
+                    </span>
+                    <span className="flex-1 truncate" title={displayName}>
+                      {displayName}
+                    </span>
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        </CommandList>
+      </Command>
     </div>
   );
 });
@@ -172,10 +206,8 @@ const PromptInput = memo(function PromptInput({
   onPromptChange: (value: string) => void;
   availableColumns: TableColumnDef[];
 }) {
-  // Track selected columns and template sections
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
-  const [prePrompt, setPrePrompt] = useState("");
-  const [postPrompt, setPostPrompt] = useState("");
+  const [prompt, setPrompt] = useState("");
   
   // Initialize from initial value if it exists
   React.useEffect(() => {
@@ -186,37 +218,41 @@ const PromptInput = memo(function PromptInput({
       let match;
       
       while ((match = regex.exec(initialValue)) !== null) {
-        columns.add(match[1].trim());
+        // Find the matching column by ID
+        const columnId = match[1].trim();
+        const column = availableColumns.find(col => col.accessorKey === columnId);
+        if (column?.accessorKey) {
+          columns.add(column.accessorKey);
+        }
       }
       
       setSelectedColumns(columns);
-      
-      // Split the text sections
-      const parts = initialValue.split(/{{[^}]+}}/);
-      setPrePrompt(parts[0]?.trim() || "");
-      setPostPrompt(parts[1]?.trim() || "");
+      setPrompt(initialValue.replace(/{{[^}]+}}/g, '').trim());
     }
-  }, [initialValue]);
+  }, [initialValue, availableColumns]);
 
-  // Update the full prompt when any section changes
+  // Update the full prompt when text or columns change
   const updateFullPrompt = useCallback(() => {
-    const columnRefs = Array.from(selectedColumns)
-      .map(col => `{{${col}}}`)
-      .join(" ");
+    const parts = [prompt.trim()];
     
-    const parts = [
-      prePrompt.trim(),
-      columnRefs,
-      postPrompt.trim()
-    ].filter(Boolean);
+    // Add selected columns at the end
+    if (selectedColumns.size > 0) {
+      const validColumns = Array.from(selectedColumns)
+        .filter(colId => availableColumns.some(col => col.accessorKey === colId))
+        .map(colId => `{{${colId}}}`);
+      
+      if (validColumns.length > 0) {
+        parts.push(validColumns.join(' '));
+      }
+    }
     
-    onPromptChange(parts.join(" "));
-  }, [prePrompt, postPrompt, selectedColumns, onPromptChange]);
+    onPromptChange(parts.filter(Boolean).join(' '));
+  }, [prompt, selectedColumns, availableColumns, onPromptChange]);
 
-  // Update when any section changes
-  React.useEffect(() => {
+  // Update when prompt or columns change
+  useEffect(() => {
     updateFullPrompt();
-  }, [prePrompt, postPrompt, selectedColumns, updateFullPrompt]);
+  }, [prompt, selectedColumns, updateFullPrompt]);
 
   const handleToggleColumn = useCallback((columnId: string) => {
     setSelectedColumns(prev => {
@@ -232,31 +268,16 @@ const PromptInput = memo(function PromptInput({
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium">AI Prompt Template</Label>
-        <p className="text-sm text-muted-foreground mt-1">
-          Build your prompt by combining text and column references
-        </p>
-      </div>
-      
       <TemplateSection
-        label="Before Columns"
-        value={prePrompt}
-        onChange={setPrePrompt}
-        placeholder="Enter text that should appear before column references..."
+        label="Prompt"
+        value={prompt}
+        onChange={setPrompt}
+        placeholder="Write your prompt here. Selected columns will be replaced with their values when processing..."
       />
-      
       <ColumnReferenceSection
         columns={availableColumns}
         selectedColumns={selectedColumns}
         onToggleColumn={handleToggleColumn}
-      />
-      
-      <TemplateSection
-        label="After Columns"
-        value={postPrompt}
-        onChange={setPostPrompt}
-        placeholder="Enter text that should appear after column references..."
       />
     </div>
   );
@@ -303,20 +324,24 @@ export function AIColumnConfig({
 
     if (isNewColumn) {
       if (onCreate && position && referenceColumnId) {
-        onCreate(name.trim(), prompt, position, referenceColumnId);
+        onCreate(position, referenceColumnId, {
+          type: "regular",
+          name: name.trim(),
+          prompt: prompt
+        });
       }
     } else {
-      if (onSave && currentColumnId) {
-        onSave(currentColumnId, prompt);
+      if (onSave) {
+        onSave({ prompt });
       }
     }
     onOpenChange(false);
-  }, [name, isNewColumn, onCreate, position, referenceColumnId, prompt, onSave, currentColumnId, onOpenChange]);
+  }, [name, isNewColumn, onCreate, position, referenceColumnId, prompt, onSave, onOpenChange]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-full w-[400px] flex-col border-l bg-background shadow-lg">
+    <div className="fixed right-0 top-0 z-50 flex h-full w-[480px] flex-col border-l bg-background shadow-lg">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <h3 className="font-semibold">{isNewColumn ? "Create AI Column" : "Configure AI Column"}</h3>
         <Button

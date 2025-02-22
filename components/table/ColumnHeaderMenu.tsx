@@ -6,29 +6,37 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Column } from "@tanstack/react-table";
-import { TableData } from "./DataTable";
-
-interface ColumnHeaderMenuProps {
-  column: Column<TableData, unknown>;
-  onDeleteColumn: (columnId: string) => void;
-}
+import { Sparkles } from "lucide-react";
+import { ColumnHeaderMenuProps, TableColumnDef } from "./types";
 
 export function ColumnHeaderMenu({ 
   column,
-  onDeleteColumn
+  onDeleteColumn,
+  onProcessColumn
 }: ColumnHeaderMenuProps) {
+  const columnDef = column.columnDef as TableColumnDef;
+  const isAIColumn = columnDef.meta.type === 'ai';
+
   return (
     <ContextMenu>
       <ContextMenuTrigger className="size-full flex items-center px-4">
-        {typeof column.columnDef.header === 'string' 
-          ? column.columnDef.header 
-          : column.id}
+        {typeof columnDef.header === 'string' 
+          ? columnDef.header 
+          : columnDef.accessorKey}
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {isAIColumn && onProcessColumn && (
+          <ContextMenuItem
+            onClick={() => onProcessColumn(columnDef.accessorKey)}
+            className="gap-2"
+          >
+            <Sparkles className="size-4" />
+            Process Column
+          </ContextMenuItem>
+        )}
         <ContextMenuItem
           className="text-destructive"
-          onClick={() => onDeleteColumn(column.id)}
+          onClick={() => onDeleteColumn(columnDef.accessorKey)}
         >
           Delete Column
         </ContextMenuItem>

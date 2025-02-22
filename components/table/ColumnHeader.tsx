@@ -1,6 +1,6 @@
 "use client";
 
-import { Column, ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Settings, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,32 +10,31 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { TableData } from "./DataTable";
 import { AIColumnConfig } from "./AIColumnConfig";
-import { useState } from "react";
+import { Column } from "@tanstack/react-table";
+import { TableData, TableColumnDef } from "./types";
 
 interface ColumnHeaderProps {
   column: Column<TableData, unknown>;
+  columns: TableColumnDef[];
   title: string;
-  onDeleteColumn: (columnId: string) => void;
-  onAddColumn: (position: "left" | "right", columnId: string, type: "regular" | "ai") => void;
-  onUpdateAIColumn: (columnId: string, prompt: string) => void;
-  onCreateAIColumn: (name: string, prompt: string, position: "left" | "right", referenceColumnId: string) => void;
-  columns: ColumnDef<TableData, any>[];
+  onDelete: () => void;
+  onCreateAI: (position: "left" | "right") => void;
+  onUpdateAI: (columnId: string, options: { prompt?: string }) => void;
 }
 
 export function ColumnHeader({
   column,
-  title,
-  onDeleteColumn,
-  onAddColumn,
-  onUpdateAIColumn,
-  onCreateAIColumn,
   columns,
+  title,
+  onDelete,
+  onCreateAI,
+  onUpdateAI
 }: ColumnHeaderProps) {
   const [configOpen, setConfigOpen] = useState(false);
   const [newColumnConfig, setNewColumnConfig] = useState<{ position: "left" | "right" } | null>(null);
-  const isAIColumn = (column.columnDef.meta as any)?.type === 'ai';
+  const columnDef = column.columnDef as TableColumnDef;
+  const isAIColumn = columnDef.meta?.type === 'ai';
 
   return (
     <div className="flex items-center space-x-2 w-full">
@@ -69,33 +68,18 @@ export function ColumnHeader({
               <ContextMenuSeparator />
             </>
           )}
-          <ContextMenuItem onClick={() => {
-            onAddColumn("left", column.id, "regular");
-          }}>
-            Insert Regular Column Left
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => {
-            setNewColumnConfig({ position: "left" });
-          }}>
+          <ContextMenuItem onClick={() => onCreateAI("left")}>
             <Sparkles className="size-4 mr-2" />
             Insert AI Column Left
           </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => {
-            onAddColumn("right", column.id, "regular");
-          }}>
-            Insert Regular Column Right
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => {
-            setNewColumnConfig({ position: "right" });
-          }}>
+          <ContextMenuItem onClick={() => onCreateAI("right")}>
             <Sparkles className="size-4 mr-2" />
             Insert AI Column Right
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
             className="text-destructive"
-            onClick={() => onDeleteColumn(column.id)}
+            onClick={onDelete}
           >
             Delete Column
           </ContextMenuItem>
@@ -108,9 +92,9 @@ export function ColumnHeader({
           open={configOpen}
           onOpenChange={setConfigOpen}
           columns={columns}
-          currentColumnId={column.id}
-          currentPrompt={(column.columnDef.meta as any)?.prompt}
-          onSave={onUpdateAIColumn}
+          currentColumnId={columnDef.accessorKey}
+          currentPrompt={columnDef.meta.prompt}
+          onSave={(options: { prompt?: string }) => onUpdateAI(columnDef.accessorKey, options)}
         />
       )}
 
@@ -121,8 +105,8 @@ export function ColumnHeader({
           onOpenChange={(open) => !open && setNewColumnConfig(null)}
           columns={columns}
           position={newColumnConfig.position}
-          referenceColumnId={column.id}
-          onCreate={onCreateAIColumn}
+          referenceColumnId={columnDef.accessorKey}
+          onCreate={onCreateAI}
         />
       )}
     </div>

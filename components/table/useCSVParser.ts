@@ -1,11 +1,10 @@
 import { parse } from "papaparse";
-import { ColumnDef } from "@tanstack/react-table";
-import { TableData } from "./DataTable";
+import { TableData, TableColumnDef } from "./types";
 import { EditableCell } from "./editableCell";
 
 interface CSVParseResult {
   data: TableData[];
-  columns: ColumnDef<TableData, any>[];
+  columns: TableColumnDef[];
 }
 
 // Helper to check if a string is a date
@@ -33,8 +32,8 @@ export function useCSVParser() {
         dynamicTyping: true,
         skipEmptyLines: true,
         transformHeader: (header) => {
-          // Clean up header names, remove special characters
-          return header.trim().replace(/[^\w\s]/g, '_');
+          const cleaned = header.trim().replace(/[^\w\s]/g, '_');
+          return cleaned;
         },
         complete: (results) => {
           if (results.errors.length > 0) {
@@ -48,18 +47,15 @@ export function useCSVParser() {
             return;
           }
 
-          // Detect column types by sampling first few rows
           const sampleSize = Math.min(10, data.length);
           const columnTypes = new Map<string, 'date' | 'regular'>();
           
           Object.keys(data[0]).forEach(key => {
-            // Sample the first few non-null values
             const samples = data
               .slice(0, sampleSize)
               .map(row => row[key]?.toString())
               .filter((sample): sample is string => Boolean(sample));
-            
-            // Check if all samples match date pattern
+
             const isDate = samples.length > 0 && 
               samples.every(sample => isDateString(sample));
             
@@ -67,7 +63,7 @@ export function useCSVParser() {
           });
 
           // Create columns with appropriate sorting
-          const columns: ColumnDef<TableData, any>[] = Object.keys(data[0]).map((key) => ({
+          const columns: TableColumnDef[] = Object.keys(data[0]).map((key) => ({
             accessorKey: key,
             header: key,
             cell: EditableCell,
@@ -86,24 +82,17 @@ export function useCSVParser() {
               : undefined
           }));
 
-          // If we detected any date columns, convert their values to consistent format
-          if (Array.from(columnTypes.values()).includes('date')) {
-            data.forEach(row => {
-              columnTypes.forEach((type, key) => {
-                if (type === 'date' && row[key]) {
-                  const date = parseDate(row[key]?.toString() || '');
-                  if (date) {
-                    // Store dates in a consistent format (YYYY-MM-DD)
-                    row[key] = date.toISOString().split('T')[0];
-                  }
-                }
-              });
-            });
-          }
-
-          resolve({ data, columns });
+          // Ensure we're working with fresh arrays
+          const freshData = data.map(row => ({ ...row })); // New reference for each row
+          const freshColumns = columns.map(col => ({ ...col })); // New reference for each column
+          // Return new references
+          resolve({ 
+            data: freshData,
+            columns: freshColumns
+          });
         },
         error: (error) => {
+          console.error('CSV Parse - Error:', error);
           reject(error);
         },
       });
