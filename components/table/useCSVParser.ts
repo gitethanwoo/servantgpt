@@ -63,24 +63,14 @@ export function useCSVParser() {
           });
 
           // Create columns with appropriate sorting
-          const columns: TableColumnDef[] = Object.keys(data[0]).map((key) => ({
+          const columns = Object.keys(data[0]).map((key) => ({
             accessorKey: key,
             header: key,
             cell: EditableCell,
             meta: {
-              type: 'regular'
+              type: "regular" as const,
             },
-            sortingFn: columnTypes.get(key) === 'date' 
-              ? (rowA, rowB, columnId) => {
-                  const a = parseDate(rowA.getValue(columnId)?.toString() || '');
-                  const b = parseDate(rowB.getValue(columnId)?.toString() || '');
-                  if (!a && !b) return 0;
-                  if (!a) return -1;
-                  if (!b) return 1;
-                  return a.getTime() - b.getTime();
-                }
-              : undefined
-          }));
+          } as TableColumnDef));
 
           // Ensure we're working with fresh arrays
           const freshData = data.map(row => ({ ...row })); // New reference for each row

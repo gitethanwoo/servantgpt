@@ -37,9 +37,9 @@ export const models: Array<Model> = [
     icon: LightbulbIcon({ size: 20 }),
   },
   {
-    id: 'claude-3-5-sonnet-20241022',
-    label: 'Claude 3.5 Sonnet',
-    apiIdentifier: 'claude-3-5-sonnet-20241022',
+    id: 'claude-3-7-sonnet-20250219',
+    label: 'Claude 3.7 Sonnet',
+    apiIdentifier: 'claude-3-7-sonnet-20250219',
     description: 'Best for implementing code and writing more expressively',
     provider: 'anthropic',
     icon: CodeIcon({ size: 16 }),
