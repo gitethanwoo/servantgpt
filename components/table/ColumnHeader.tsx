@@ -20,7 +20,7 @@ interface ColumnHeaderProps {
   title: string;
   onDelete: () => void;
   onCreateAI: (position: "left" | "right") => void;
-  onUpdateAI: (columnId: string, options: { prompt?: string }) => void;
+  onUpdateAI: (options: { prompt?: string }) => void;
 }
 
 export function ColumnHeader({
@@ -94,7 +94,7 @@ export function ColumnHeader({
           columns={columns}
           currentColumnId={columnDef.accessorKey}
           currentPrompt={columnDef.meta.prompt}
-          onSave={(options: { prompt?: string }) => onUpdateAI(columnDef.accessorKey, options)}
+          onSave={(options: { prompt?: string }) => onUpdateAI(options)}
         />
       )}
 

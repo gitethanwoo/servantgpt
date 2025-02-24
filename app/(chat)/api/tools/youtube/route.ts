@@ -103,7 +103,7 @@ export async function GET(req: Request) {
       });
 
       // Set a shorter timeout since we're only interested in the initial data
-      page.setDefaultTimeout(10000);
+      page.setDefaultTimeout(20000);
 
       // Load the page with minimal features
       await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {

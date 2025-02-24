@@ -56,11 +56,9 @@ export function DataTable({
           onCreateAI={(position: "left" | "right") => 
             handlers.onCreateAIColumn(position, (column.columnDef as TableColumnDef).accessorKey)
           }
-          onUpdateAI={(options) => {
-            if (options.prompt !== undefined) {
-              handlers.onUpdateAIColumn((column.columnDef as TableColumnDef).accessorKey, options);
-            }
-          }}
+          onUpdateAI={(options) => 
+            handlers.onUpdateAIColumn((column.columnDef as TableColumnDef).accessorKey, options)
+          }
         />
       ),
     }));
