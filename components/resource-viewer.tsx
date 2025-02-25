@@ -1,5 +1,3 @@
-
-
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -15,6 +13,11 @@ interface Resource {
   tagline: string | null;
   userId: string;
   createdAt: Date;
+}
+
+interface ResourceViewerProps {
+  resource: Resource;
+  hideTranscript?: boolean;
 }
 
 function getYouTubeEmbedUrl(url: string) {
@@ -41,7 +44,7 @@ function VideoEmbed({ url }: { url: string }) {
 
 function TranscriptViewer({ transcript }: { transcript: string }) {
   return (
-    <ScrollArea className="h-[600px] w-full rounded-md border p-4">
+    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
       <div className="space-y-1">
         {transcript.split('\n').map((line, index) => {
           const [timestamp, ...textParts] = line.split('] ');
@@ -61,7 +64,7 @@ function TranscriptViewer({ transcript }: { transcript: string }) {
   );
 }
 
-export function ResourceViewer({ resource }: { resource: Resource }) {
+export function ResourceViewer({ resource, hideTranscript = false }: ResourceViewerProps) {
   const tags = resource.tags as string[] | undefined;
 
   return (
@@ -89,19 +92,17 @@ export function ResourceViewer({ resource }: { resource: Resource }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <VideoEmbed url={resource.url} />
-          {resource.summary && (
-            <div className="prose dark:prose-invert max-w-none">
-              <h2 className="text-xl font-semibold mb-2">Summary</h2>
-              <p>{resource.summary}</p>
-            </div>
-          )}
-        </div>
+      <div>
+        <VideoEmbed url={resource.url} />
+        {resource.summary && (
+          <div className="prose dark:prose-invert max-w-none mt-6">
+            <h2 className="text-xl font-semibold mb-2">Summary</h2>
+            <p>{resource.summary}</p>
+          </div>
+        )}
         
-        {resource.transcript && (
-          <div className="space-y-2">
+        {resource.transcript && !hideTranscript && (
+          <div className="space-y-2 mt-6">
             <h2 className="text-xl font-semibold">Transcript</h2>
             <TranscriptViewer transcript={resource.transcript} />
           </div>
