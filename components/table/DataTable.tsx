@@ -41,27 +41,39 @@ export function DataTable({
 
   // Memoize columns to prevent unnecessary re-renders
   const processedColumns = useMemo(() => {
-    return columns.map(col => ({
-      ...col,
-      enableSorting: true,
-      accessorKey: col.accessorKey || col.header?.toString() || col.id || 'column',
-      cell: col.meta?.type === 'ai' ? AICellWrapper : EditableCellWrapper,
-      size: 200,
-      header: ({ column }: { column: Column<TableData, unknown> }) => (
-        <ColumnHeader
-          column={column}
-          columns={columns}
-          title={col.header?.toString() || col.accessorKey}
-          onDelete={() => handlers.onDeleteColumn((column.columnDef as TableColumnDef).accessorKey)}
-          onCreateAI={(position: "left" | "right") => 
-            handlers.onCreateAIColumn(position, (column.columnDef as TableColumnDef).accessorKey)
-          }
-          onUpdateAI={(options) => 
-            handlers.onUpdateAIColumn((column.columnDef as TableColumnDef).accessorKey, options)
-          }
-        />
-      ),
-    }));
+    return columns.map(col => {
+      const processed = {
+        ...col,
+        enableSorting: true,
+        accessorKey: col.accessorKey || col.header?.toString() || col.id || 'column',
+        cell: col.meta?.type === 'ai' ? AICellWrapper : EditableCellWrapper,
+        size: 200,
+        header: ({ column }: { column: Column<TableData, unknown> }) => (
+          <ColumnHeader
+            column={column}
+            columns={columns}
+            title={col.header?.toString() || col.accessorKey}
+            onDelete={() => handlers.onDeleteColumn((column.columnDef as TableColumnDef).accessorKey)}
+            onCreateAI={(position: "left" | "right") => 
+              handlers.onCreateAIColumn(position, (column.columnDef as TableColumnDef).accessorKey)
+            }
+            onUpdateAI={(options) => {
+              console.log("[DataTable] onUpdateAI called with:", options);
+              handlers.onUpdateAIColumn((column.columnDef as TableColumnDef).accessorKey, options);
+            }}
+          />
+        ),
+      };
+      
+      if (col.meta?.type === 'ai') {
+        console.log("[DataTable] AI column processed:", { 
+          accessorKey: processed.accessorKey, 
+          meta: col.meta 
+        });
+      }
+      
+      return processed;
+    });
   }, [columns, handlers]);
 
   // Create table instance with stable references

@@ -46,14 +46,34 @@ export default function TablePage() {
     setColumns(newColumns);
   };
 
-  const handleCreateAIColumn = (position: "left" | "right", referenceColumnId?: string, options = {}) => {
-    const newColumnId = addColumn(position, referenceColumnId, options);
+  const handleCreateAIColumn = useCallback((position: "left" | "right", referenceColumnId?: string, options = {}) => {
+    // Always ensure type is AI
+    const newColumnId = addColumn(position, referenceColumnId, { 
+      ...options, 
+      type: "ai",
+      name: options.name || "AI Column" 
+    });
+    
+    // Open the configuration panel for the new column
+    setConfigColumnId(newColumnId);
+    setConfigOpen(true);
+    
     return newColumnId;
-  };
+  }, [addColumn]);
 
-  const handleUpdateAIColumn = (columnId: string, options: { name?: string; prompt?: string }) => {
-    updateColumnMeta(columnId, options);
-  };
+  const handleUpdateAIColumn = useCallback((columnId: string, options: { name?: string; prompt?: string }) => {
+    console.log("[TablePage] handleUpdateAIColumn called with:", { columnId, options });
+    updateColumnMeta(columnId, {
+      ...options,
+      type: "ai" // Ensure type stays AI
+    });
+    
+    // Check if update was successful
+    setTimeout(() => {
+      const updatedColumn = columns.find(col => col.accessorKey === columnId);
+      console.log("[TablePage] Column after update:", updatedColumn);
+    }, 0);
+  }, [updateColumnMeta, columns]);
 
   // Listen for AI config events
   useEffect(() => {
@@ -94,6 +114,7 @@ export default function TablePage() {
             col.accessorKey === configColumnId
           )?.meta?.prompt) || ''}
           onSave={(options) => {
+            console.log("[TablePage] AIColumnConfig onSave received:", options);
             handleUpdateAIColumn(configColumnId, options);
             setConfigOpen(false);
             setConfigColumnId(null);

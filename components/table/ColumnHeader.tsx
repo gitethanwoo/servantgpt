@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Settings, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ interface ColumnHeaderProps {
   title: string;
   onDelete: () => void;
   onCreateAI: (position: "left" | "right") => void;
-  onUpdateAI: (options: { prompt?: string }) => void;
+  onUpdateAI: (options: { name?: string; prompt?: string }) => void;
 }
 
 export function ColumnHeader({
@@ -35,6 +35,14 @@ export function ColumnHeader({
   const [newColumnConfig, setNewColumnConfig] = useState<{ position: "left" | "right" } | null>(null);
   const columnDef = column.columnDef as TableColumnDef;
   const isAIColumn = columnDef.meta?.type === 'ai';
+
+  // Handle creating an AI column
+  const handleCreateAI = useCallback((position: "left" | "right") => {
+    // First set the config state to show the panel
+    setNewColumnConfig({ position });
+    // Then call the parent handler
+    onCreateAI(position);
+  }, [onCreateAI]);
 
   return (
     <div className="flex items-center space-x-2 w-full">
@@ -68,11 +76,11 @@ export function ColumnHeader({
               <ContextMenuSeparator />
             </>
           )}
-          <ContextMenuItem onClick={() => onCreateAI("left")}>
+          <ContextMenuItem onClick={() => handleCreateAI("left")}>
             <Sparkles className="size-4 mr-2" />
             Insert AI Column Left
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => onCreateAI("right")}>
+          <ContextMenuItem onClick={() => handleCreateAI("right")}>
             <Sparkles className="size-4 mr-2" />
             Insert AI Column Right
           </ContextMenuItem>

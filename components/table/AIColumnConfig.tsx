@@ -208,14 +208,24 @@ const PromptInput = memo(function PromptInput({
 }) {
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
   const [prompt, setPrompt] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
+  const previousPromptRef = useRef(initialValue);
   
-  // Initialize from initial value if it exists
+  // Initialize from initial value if it exists - only run once or when initialValue actually changes
   React.useEffect(() => {
+    // Skip if already initialized with this value
+    if (initialValue === previousPromptRef.current && isInitialized) {
+      return;
+    }
+    
+    previousPromptRef.current = initialValue;
+    
     if (initialValue) {
       // Extract column references and text sections
       const regex = /{{([^}]+)}}/g;
       const columns = new Set<string>();
       let match;
+      let tempPrompt = initialValue;
       
       while ((match = regex.exec(initialValue)) !== null) {
         // Find the matching column by ID
@@ -226,13 +236,17 @@ const PromptInput = memo(function PromptInput({
         }
       }
       
+      // Remove column references from prompt text
+      tempPrompt = initialValue.replace(/{{[^}]+}}/g, '').trim();
+      
       setSelectedColumns(columns);
-      setPrompt(initialValue.replace(/{{[^}]+}}/g, '').trim());
+      setPrompt(tempPrompt);
+      setIsInitialized(true);
     }
-  }, [initialValue, availableColumns]);
+  }, [initialValue, availableColumns, isInitialized]);
 
-  // Update the full prompt when text or columns change
-  const updateFullPrompt = useCallback(() => {
+  // Memoize the full prompt calculation to avoid unnecessary updates
+  const fullPrompt = useMemo(() => {
     const parts = [prompt.trim()];
     
     // Add selected columns at the end
@@ -246,13 +260,20 @@ const PromptInput = memo(function PromptInput({
       }
     }
     
-    onPromptChange(parts.filter(Boolean).join(' '));
-  }, [prompt, selectedColumns, availableColumns, onPromptChange]);
+    return parts.filter(Boolean).join(' ');
+  }, [prompt, selectedColumns, availableColumns]);
 
-  // Update when prompt or columns change
+  // Only update when the calculated full prompt actually changes
   useEffect(() => {
-    updateFullPrompt();
-  }, [prompt, selectedColumns, updateFullPrompt]);
+    // Skip the initial automatic trigger
+    if (!isInitialized) return;
+    
+    // Only call onPromptChange if the prompt has actually changed
+    if (fullPrompt !== previousPromptRef.current) {
+      previousPromptRef.current = fullPrompt;
+      onPromptChange(fullPrompt);
+    }
+  }, [fullPrompt, onPromptChange, isInitialized]);
 
   const handleToggleColumn = useCallback((columnId: string) => {
     setSelectedColumns(prev => {
@@ -294,11 +315,21 @@ export function AIColumnConfig({
   onSave,
   onCreate,
 }: AIColumnConfigProps) {
-  const [name, setName] = React.useState(currentColumnId ? 
-    columns.find(col => col.accessorKey === currentColumnId)?.header?.toString() || "" 
-    : "");
+  // Get the current column to access its properties
+  const currentColumn = useMemo(() => 
+    currentColumnId ? columns.find(col => col.accessorKey === currentColumnId) : undefined,
+    [columns, currentColumnId]
+  );
+  
+  // Initialize state from the current column
+  const [name, setName] = React.useState(
+    currentColumn?.header?.toString() || 
+    currentColumn?.meta?.headerText || 
+    ""
+  );
   const [prompt, setPrompt] = React.useState(currentPrompt);
   const isNewColumn = !currentColumnId;
+  const initializedRef = useRef(false);
 
   // Memoize available columns calculation
   const availableColumns = useMemo(() => 
@@ -309,35 +340,58 @@ export function AIColumnConfig({
     [columns, currentColumnId, isNewColumn]
   );
 
-  // Reset state when panel opens
+  // Reset state when panel opens or relevant props change
   React.useEffect(() => {
-    if (open) {
+    if (open && !initializedRef.current) {
       setPrompt(currentPrompt);
-      setName(currentColumnId ? 
-        columns.find(col => col.accessorKey === currentColumnId)?.header?.toString() || "" 
-        : "");
+      setName(
+        currentColumn?.header?.toString() || 
+        currentColumn?.meta?.headerText || 
+        ""
+      );
+      initializedRef.current = true;
+    } else if (!open) {
+      // Reset the initialized flag when closed
+      initializedRef.current = false;
     }
-  }, [open, currentPrompt, currentColumnId, columns]);
+  }, [open, currentPrompt, currentColumn]);
 
+  // Memoize the save handler
   const handleSave = React.useCallback(() => {
     if (!name.trim()) return;
 
     if (isNewColumn) {
       if (onCreate && position && referenceColumnId) {
+        console.log("[AIColumnConfig] Creating new column with:", { 
+          position, 
+          referenceColumnId, 
+          name: name.trim(), 
+          prompt 
+        });
         onCreate(position, referenceColumnId, {
-          type: "regular",
+          type: "ai",
           name: name.trim(),
           prompt: prompt
         });
       }
     } else {
       if (onSave) {
-        onSave({ prompt });
+        // For existing columns, include both name and prompt
+        console.log("[AIColumnConfig] Saving existing column with:", { 
+          name: name.trim(), 
+          prompt 
+        });
+        onSave({ 
+          name: name.trim(),
+          prompt 
+        });
+        console.log("[AIColumnConfig] Save called");
       }
     }
     onOpenChange(false);
   }, [name, isNewColumn, onCreate, position, referenceColumnId, prompt, onSave, onOpenChange]);
 
+  // If not open, don't render anything
   if (!open) return null;
 
   return (
@@ -358,12 +412,11 @@ export function AIColumnConfig({
             Set up how this column should process data using AI. Reference other columns using the buttons below.
           </p>
         </div>
-        {isNewColumn && (
-          <NameInput
-            initialValue={name}
-            onNameChange={setName}
-          />
-        )}
+        {/* Allow editing name for both new and existing columns */}
+        <NameInput
+          initialValue={name}
+          onNameChange={setName}
+        />
         <PromptInput
           initialValue={prompt}
           onPromptChange={setPrompt}

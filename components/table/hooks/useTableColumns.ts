@@ -68,18 +68,43 @@ export function useTableColumns({
     return { newData, newColumns };
   };
 
-  const updateColumnMeta = (columnId: string, meta: Partial<TableColumnDef['meta']>) => {
-    setColumns(oldColumns => oldColumns.map(col => 
-      col.accessorKey === columnId
-        ? { 
-            ...col, 
-            meta: { 
-              ...col.meta,
-              ...meta
-            }
+  const updateColumnMeta = (columnId: string, meta: Partial<TableColumnDef['meta'] & { name?: string }>) => {
+    console.log("[useTableColumns] updateColumnMeta called with:", { columnId, meta });
+    
+    // Log the column before update
+    const columnBefore = columns.find(col => col.accessorKey === columnId);
+    console.log("[useTableColumns] Column before update:", columnBefore);
+    
+    const updatedColumns = columns.map(col => {
+      if (col.accessorKey === columnId) {
+        // Extract name if provided, to update the header
+        const { name, ...restMeta } = meta;
+        
+        // Create the updated column
+        const updatedColumn = { 
+          ...col,
+          // Update header if name is provided
+          ...(name ? { header: name } : {}),
+          meta: { 
+            ...col.meta,
+            ...restMeta,
+            // Also update headerText if name is provided
+            ...(name ? { headerText: name } : {})
           }
-        : col
-    ));
+        };
+        
+        console.log("[useTableColumns] Updated column:", updatedColumn);
+        return updatedColumn;
+      }
+      return col;
+    });
+    
+    // Update state and notify listeners
+    setColumns(updatedColumns);
+    onColumnChange?.(updatedColumns);
+    
+    // Log the columns after update
+    console.log("[useTableColumns] Columns after update:", updatedColumns);
   };
 
   return {

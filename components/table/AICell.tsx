@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import { useCompletion } from "ai/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ export const AICell = memo(function AICell({
 }: CellProps) {
   const [value, setValue] = useState(getValue()?.toString() ?? "");
   const [isEditing, setIsEditing] = useState(false);
+
+  // Log column definition on mount
+  useEffect(() => {
+    console.log("[AICell] Mounted with column:", { 
+      accessorKey: column.columnDef.accessorKey,
+      meta: column.columnDef.meta
+    });
+  }, [column.columnDef]);
 
   const { complete, isLoading } = useCompletion({
     api: '/api/tools/table-ai',
@@ -33,6 +41,12 @@ export const AICell = memo(function AICell({
 
   const processCell = useCallback(async () => {
     const prompt = column.columnDef.meta?.prompt;
+    console.log("[AICell] processCell accessing prompt:", { 
+      accessorKey: column.columnDef.accessorKey,
+      prompt,
+      meta: column.columnDef.meta
+    });
+    
     if (!prompt) return;
 
     // Resolve column references in the prompt
@@ -48,6 +62,7 @@ export const AICell = memo(function AICell({
       return `${header}: "${value}"`;
     });
 
+    console.log("[AICell] Sending resolved prompt:", resolvedPrompt);
     await complete(resolvedPrompt);
   }, [column.columnDef.meta?.prompt, complete, row, table]);
 
