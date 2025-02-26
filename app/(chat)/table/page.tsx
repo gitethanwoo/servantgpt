@@ -46,7 +46,11 @@ export default function TablePage() {
     setColumns(newColumns);
   };
 
-  const handleCreateAIColumn = useCallback((position: "left" | "right", referenceColumnId?: string, options = {}) => {
+  const handleCreateAIColumn = useCallback((position: "left" | "right", referenceColumnId?: string, options: {
+    type?: "regular" | "ai";
+    name?: string;
+    prompt?: string;
+  } = {}) => {
     // Always ensure type is AI
     const newColumnId = addColumn(position, referenceColumnId, { 
       ...options, 
