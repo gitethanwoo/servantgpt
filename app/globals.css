@@ -199,4 +199,15 @@
   .table-scroll::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted));
     border-radius: 4px;
-  } 
+  }
+  
+  
+  
+  @layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+} 
