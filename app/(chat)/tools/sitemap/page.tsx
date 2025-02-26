@@ -6,5 +6,9 @@ export const metadata = {
 };
 
 export default function SitemapPage() {
-  return <VisualSitemapTool />;
+  return (
+    <div className="mt-8">
+      <VisualSitemapTool />
+    </div>
+  );
 } 
