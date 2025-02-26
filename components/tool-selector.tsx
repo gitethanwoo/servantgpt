@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { ChevronDownIcon } from './icons';
-import { Mic, PlayIcon } from 'lucide-react';
+import { Mic, PlayIcon, Map, BarChart } from 'lucide-react';
 
 export const tools = {
   audio: {
@@ -22,6 +22,18 @@ export const tools = {
     icon: <PlayIcon className="size-4" />,
     label: 'YouTube Transcript',
     description: 'Extract transcripts from YouTube videos'
+  },
+  sitemap: {
+    id: 'sitemap',
+    icon: <Map className="size-4" />,
+    label: 'Visual Sitemap',
+    description: 'Generate visual sitemaps for websites'
+  },
+  sentiment: {
+    id: 'sentiment',
+    icon: <BarChart className="size-4" />,
+    label: 'Sentiment Analysis',
+    description: 'Analyze emotional tone in conversations'
   }
 } as const;
 
