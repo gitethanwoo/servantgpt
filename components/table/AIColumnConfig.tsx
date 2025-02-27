@@ -1,13 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { memo, useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ColumnDef } from "@tanstack/react-table";
 import { TableData, AIColumnConfigProps, TableColumnDef } from "./types";
 import { X, Check } from "lucide-react";
 
@@ -22,66 +20,8 @@ import {
 } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge";
 
-// Memoized name input component
-const NameInput = memo(function NameInput({
-  initialValue,
-  onNameChange
-}: {
-  initialValue: string;
-  onNameChange: (value: string) => void;
-}) {
-  const [localName, setLocalName] = React.useState(initialValue);
-
-  React.useEffect(() => {
-    setLocalName(initialValue);
-  }, [initialValue]);
-
-  return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">Column Name</Label>
-      <Input
-        placeholder="Enter column name"
-        value={localName}
-        onChange={(e) => setLocalName(e.target.value)}
-        onBlur={() => onNameChange(localName)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            onNameChange(localName);
-          }
-        }}
-      />
-    </div>
-  );
-});
-
-// Memoized template section component
-const TemplateSection = memo(function TemplateSection({
-  value,
-  onChange,
-  placeholder,
-  label
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  label: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Textarea
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-[80px] resize-none"
-      />
-    </div>
-  );
-});
-
-// Memoized column reference section
-const ColumnReferenceSection = memo(function ColumnReferenceSection({
+// Memoized column reference section - kept because it contains complex logic
+const ColumnReferenceSection = React.memo(function ColumnReferenceSection({
   columns,
   selectedColumns,
   onToggleColumn
@@ -196,114 +136,6 @@ const ColumnReferenceSection = memo(function ColumnReferenceSection({
   );
 });
 
-// Replace the existing PromptInput with this new version
-const PromptInput = memo(function PromptInput({
-  initialValue,
-  onPromptChange,
-  availableColumns
-}: {
-  initialValue: string;
-  onPromptChange: (value: string) => void;
-  availableColumns: TableColumnDef[];
-}) {
-  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
-  const [prompt, setPrompt] = useState("");
-  const [isInitialized, setIsInitialized] = useState(false);
-  const previousPromptRef = useRef(initialValue);
-  
-  // Initialize from initial value if it exists - only run once or when initialValue actually changes
-  React.useEffect(() => {
-    // Skip if already initialized with this value
-    if (initialValue === previousPromptRef.current && isInitialized) {
-      return;
-    }
-    
-    previousPromptRef.current = initialValue;
-    
-    if (initialValue) {
-      // Extract column references and text sections
-      const regex = /{{([^}]+)}}/g;
-      const columns = new Set<string>();
-      let match;
-      let tempPrompt = initialValue;
-      
-      while ((match = regex.exec(initialValue)) !== null) {
-        // Find the matching column by ID
-        const columnId = match[1].trim();
-        const column = availableColumns.find(col => col.accessorKey === columnId);
-        if (column?.accessorKey) {
-          columns.add(column.accessorKey);
-        }
-      }
-      
-      // Remove column references from prompt text
-      tempPrompt = initialValue.replace(/{{[^}]+}}/g, '').trim();
-      
-      setSelectedColumns(columns);
-      setPrompt(tempPrompt);
-      setIsInitialized(true);
-    }
-  }, [initialValue, availableColumns, isInitialized]);
-
-  // Memoize the full prompt calculation to avoid unnecessary updates
-  const fullPrompt = useMemo(() => {
-    const parts = [prompt.trim()];
-    
-    // Add selected columns at the end
-    if (selectedColumns.size > 0) {
-      const validColumns = Array.from(selectedColumns)
-        .filter(colId => availableColumns.some(col => col.accessorKey === colId))
-        .map(colId => `{{${colId}}}`);
-      
-      if (validColumns.length > 0) {
-        parts.push(validColumns.join(' '));
-      }
-    }
-    
-    return parts.filter(Boolean).join(' ');
-  }, [prompt, selectedColumns, availableColumns]);
-
-  // Only update when the calculated full prompt actually changes
-  useEffect(() => {
-    // Skip the initial automatic trigger
-    if (!isInitialized) return;
-    
-    // Only call onPromptChange if the prompt has actually changed
-    if (fullPrompt !== previousPromptRef.current) {
-      previousPromptRef.current = fullPrompt;
-      onPromptChange(fullPrompt);
-    }
-  }, [fullPrompt, onPromptChange, isInitialized]);
-
-  const handleToggleColumn = useCallback((columnId: string) => {
-    setSelectedColumns(prev => {
-      const next = new Set(prev);
-      if (next.has(columnId)) {
-        next.delete(columnId);
-      } else {
-        next.add(columnId);
-      }
-      return next;
-    });
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <TemplateSection
-        label="Prompt"
-        value={prompt}
-        onChange={setPrompt}
-        placeholder="Write your prompt here. Selected columns will be replaced with their values when processing..."
-      />
-      <ColumnReferenceSection
-        columns={availableColumns}
-        selectedColumns={selectedColumns}
-        onToggleColumn={handleToggleColumn}
-      />
-    </div>
-  );
-});
-
 export function AIColumnConfig({
   open,
   onOpenChange,
@@ -321,13 +153,14 @@ export function AIColumnConfig({
     [columns, currentColumnId]
   );
   
-  // Initialize state from the current column
-  const [name, setName] = React.useState(
+  // Initialize state directly in the main component
+  const [name, setName] = useState(
     currentColumn?.header?.toString() || 
     currentColumn?.meta?.headerText || 
     ""
   );
-  const [prompt, setPrompt] = React.useState(currentPrompt);
+  const [prompt, setPrompt] = useState("");
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
   const isNewColumn = !currentColumnId;
   const initializedRef = useRef(false);
 
@@ -341,9 +174,35 @@ export function AIColumnConfig({
   );
 
   // Reset state when panel opens or relevant props change
-  React.useEffect(() => {
+  useEffect(() => {
     if (open && !initializedRef.current) {
-      setPrompt(currentPrompt);
+      // Initialize from current prompt if it exists
+      if (currentPrompt) {
+        // Extract column references and text sections
+        const regex = /{{([^}]+)}}/g;
+        const columnsSet = new Set<string>();
+        let match;
+        let textPrompt = currentPrompt;
+        
+        while ((match = regex.exec(currentPrompt)) !== null) {
+          // Find the matching column by ID
+          const columnId = match[1].trim();
+          const column = availableColumns.find(col => col.accessorKey === columnId);
+          if (column?.accessorKey) {
+            columnsSet.add(column.accessorKey);
+          }
+        }
+        
+        // Remove column references from prompt text
+        textPrompt = currentPrompt.replace(/{{[^}]+}}/g, '').trim();
+        
+        setSelectedColumns(columnsSet);
+        setPrompt(textPrompt);
+      } else {
+        setPrompt("");
+        setSelectedColumns(new Set());
+      }
+      
       setName(
         currentColumn?.header?.toString() || 
         currentColumn?.meta?.headerText || 
@@ -354,10 +213,40 @@ export function AIColumnConfig({
       // Reset the initialized flag when closed
       initializedRef.current = false;
     }
-  }, [open, currentPrompt, currentColumn]);
+  }, [open, currentPrompt, currentColumn, availableColumns]);
+
+  // Calculate the full prompt with column references
+  const fullPrompt = useMemo(() => {
+    const parts = [prompt.trim()];
+    
+    // Add selected columns at the end
+    if (selectedColumns.size > 0) {
+      const validColumns = Array.from(selectedColumns)
+        .filter(colId => availableColumns.some(col => col.accessorKey === colId))
+        .map(colId => `{{${colId}}}`);
+      
+      if (validColumns.length > 0) {
+        parts.push(validColumns.join(' '));
+      }
+    }
+    
+    return parts.filter(Boolean).join(' ');
+  }, [prompt, selectedColumns, availableColumns]);
+
+  const handleToggleColumn = useCallback((columnId: string) => {
+    setSelectedColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(columnId)) {
+        next.delete(columnId);
+      } else {
+        next.add(columnId);
+      }
+      return next;
+    });
+  }, []);
 
   // Memoize the save handler
-  const handleSave = React.useCallback(() => {
+  const handleSave = useCallback(() => {
     if (!name.trim()) return;
 
     if (isNewColumn) {
@@ -366,12 +255,12 @@ export function AIColumnConfig({
           position, 
           referenceColumnId, 
           name: name.trim(), 
-          prompt 
+          prompt: fullPrompt 
         });
         onCreate(position, referenceColumnId, {
           type: "ai",
           name: name.trim(),
-          prompt: prompt
+          prompt: fullPrompt
         });
       }
     } else {
@@ -379,17 +268,17 @@ export function AIColumnConfig({
         // For existing columns, include both name and prompt
         console.log("[AIColumnConfig] Saving existing column with:", { 
           name: name.trim(), 
-          prompt 
+          prompt: fullPrompt 
         });
         onSave({ 
           name: name.trim(),
-          prompt 
+          prompt: fullPrompt 
         });
         console.log("[AIColumnConfig] Save called");
       }
     }
     onOpenChange(false);
-  }, [name, isNewColumn, onCreate, position, referenceColumnId, prompt, onSave, onOpenChange]);
+  }, [name, isNewColumn, onCreate, position, referenceColumnId, fullPrompt, onSave, onOpenChange]);
 
   // If not open, don't render anything
   if (!open) return null;
@@ -412,16 +301,36 @@ export function AIColumnConfig({
             Set up how this column should process data using AI. Reference other columns using the buttons below.
           </p>
         </div>
-        {/* Allow editing name for both new and existing columns */}
-        <NameInput
-          initialValue={name}
-          onNameChange={setName}
-        />
-        <PromptInput
-          initialValue={prompt}
-          onPromptChange={setPrompt}
-          availableColumns={availableColumns}
-        />
+        
+        {/* Name input directly in the component */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Column Name</Label>
+          <Input
+            placeholder="Enter column name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        
+        {/* Prompt input directly in the component */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Prompt</Label>
+            <Textarea
+              placeholder="Write your prompt here. Selected columns will be replaced with their values when processing..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="min-h-[80px] resize-none"
+            />
+          </div>
+          
+          {/* Keep the column reference section as it contains complex logic */}
+          <ColumnReferenceSection
+            columns={availableColumns}
+            selectedColumns={selectedColumns}
+            onToggleColumn={handleToggleColumn}
+          />
+        </div>
       </div>
       <div className="border-t p-4">
         <Button 

@@ -61,21 +61,34 @@ export default function TablePage() {
     // Open the configuration panel for the new column
     setConfigColumnId(newColumnId);
     setConfigOpen(true);
+
+    console.log("the prompt is ", options.prompt);
     
     return newColumnId;
   }, [addColumn]);
 
   const handleUpdateAIColumn = useCallback((columnId: string, options: { name?: string; prompt?: string }) => {
-    console.log("[TablePage] handleUpdateAIColumn called with:", { columnId, options });
+    console.log("[TablePage] handleUpdateAIColumn called with:", { 
+      columnId, 
+      options,
+      optionsPrompt: options.prompt // Explicitly log the prompt
+    });
+    
+    // Log columns before update
+    console.log("[TablePage] Columns before update:", columns);
+    
     updateColumnMeta(columnId, {
       ...options,
       type: "ai" // Ensure type stays AI
     });
     
-    // Check if update was successful
+    // Check if update was successful immediately
+    console.log("[TablePage] Columns immediately after updateColumnMeta call:", columns);
+    
+    // Also check after a timeout to see if state updates
     setTimeout(() => {
       const updatedColumn = columns.find(col => col.accessorKey === columnId);
-      console.log("[TablePage] Column after update:", updatedColumn);
+      console.log("[TablePage] Column after timeout:", updatedColumn);
     }, 0);
   }, [updateColumnMeta, columns]);
 

@@ -69,7 +69,11 @@ export function useTableColumns({
   };
 
   const updateColumnMeta = (columnId: string, meta: Partial<TableColumnDef['meta'] & { name?: string }>) => {
-    console.log("[useTableColumns] updateColumnMeta called with:", { columnId, meta });
+    console.log("[useTableColumns] updateColumnMeta called with:", { 
+      columnId, 
+      meta,
+      metaPrompt: meta.prompt // Explicitly log the prompt
+    });
     
     // Log the column before update
     const columnBefore = columns.find(col => col.accessorKey === columnId);
@@ -79,6 +83,9 @@ export function useTableColumns({
       if (col.accessorKey === columnId) {
         // Extract name if provided, to update the header
         const { name, ...restMeta } = meta;
+        
+        // Log what's in restMeta to see if prompt is there
+        console.log("[useTableColumns] restMeta after extraction:", restMeta);
         
         // Create the updated column
         const updatedColumn = { 

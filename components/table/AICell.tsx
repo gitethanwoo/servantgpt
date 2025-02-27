@@ -16,11 +16,12 @@ export const AICell = memo(function AICell({
 
   // Log column definition on mount
   useEffect(() => {
-    console.log("[AICell] Mounted with column:", { 
+    console.log("[AICell] Column updated:", { 
       accessorKey: column.columnDef.accessorKey,
-      meta: column.columnDef.meta
+      meta: column.columnDef.meta,
+      prompt: column.columnDef.meta?.prompt
     });
-  }, [column.columnDef]);
+  }, [column.columnDef.meta]); // Re-run when meta changes
 
   const { complete, isLoading } = useCompletion({
     api: '/api/tools/table-ai',
@@ -64,7 +65,7 @@ export const AICell = memo(function AICell({
 
     console.log("[AICell] Sending resolved prompt:", resolvedPrompt);
     await complete(resolvedPrompt);
-  }, [column.columnDef.meta?.prompt, complete, row, table]);
+  }, [column.columnDef.meta, complete, row, table]);
 
   // Watch for column process triggers
   const columnProcessTrigger = table.options.meta?.columnProcessTrigger;
@@ -80,6 +81,14 @@ export const AICell = memo(function AICell({
       table.options.meta.updateData(row.index, column.columnDef.accessorKey, newValue);
     }
   };
+
+  console.log("[AICell] Received props:", { 
+    columnId: column.id,
+    columnDef: column.columnDef,
+    meta: column.columnDef.meta,
+    prompt: column.columnDef.meta?.prompt,
+    value: row.getValue(column.id)
+  });
 
   return (
     <div className="relative size-full group">
@@ -131,9 +140,13 @@ export const AICell = memo(function AICell({
     </div>
   );
 }, (prev, next) => {
+  const prevPrompt = prev.column.columnDef.meta?.prompt;
+  const nextPrompt = next.column.columnDef.meta?.prompt;
+  
   return (
     prev.getValue()?.toString() === next.getValue()?.toString() &&
     prev.row.index === next.row.index &&
-    prev.column.columnDef.accessorKey === next.column.columnDef.accessorKey
+    prev.column.columnDef.accessorKey === next.column.columnDef.accessorKey &&
+    prevPrompt === nextPrompt // New check for prompt changes
   );
 }); 
