@@ -21,9 +21,9 @@ export const models: Array<Model> = [
     icon: LightningIcon({ size: 16 }),
   },
   {
-    id: 'gpt-4o',
-    label: 'GPT 4o',
-    apiIdentifier: 'gpt-4o',
+    id: 'gpt-4.5-preview',
+    label: 'GPT 4.5',
+    apiIdentifier: 'gpt-4.5-preview',
     description: 'Uses the tools very well. ',
     provider: 'openai',
     icon: SparklesIcon({ size: 16 }),
@@ -46,4 +46,4 @@ export const models: Array<Model> = [
   },
 ] as const;
 
-export const DEFAULT_MODEL_NAME: string = 'gpt-4o';
+export const DEFAULT_MODEL_NAME: string = 'gpt-4.5-preview';
