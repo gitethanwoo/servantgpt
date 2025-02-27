@@ -14,6 +14,7 @@ export function VisualSitemapTool() {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sitemapData, setSitemapData] = useState('');
+  const [description, setDescription] = useState('');
   const [siteInfo, setSiteInfo] = useState<{ 
     title: string; 
     url: string; 
@@ -53,6 +54,7 @@ export function VisualSitemapTool() {
     setIsLoading(true);
     setError('');
     setSitemapData('');
+    setDescription('');
     setSiteInfo(null);
     setDebugInfo(null);
     
@@ -78,8 +80,9 @@ export function VisualSitemapTool() {
       // Store the complete response for debugging
       setDebugInfo(data);
       
-      // Set the sitemap data and site info
+      // Set the sitemap data, description, and site info
       setSitemapData(data.sitemap);
+      setDescription(data.description || '');
       setSiteInfo({
         title: data.title || processedUrl,
         url: data.url || processedUrl,
@@ -105,7 +108,7 @@ export function VisualSitemapTool() {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-2 text-center">Visual Sitemap Generator</h1>
       <p className="text-sm text-center text-muted-foreground mb-6">
         Generate a visual sitemap for any website and export to Figma
@@ -171,21 +174,41 @@ export function VisualSitemapTool() {
               </Button>
             </div>
             
-            {siteInfo && (
-              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-                <p><strong>Site:</strong> {siteInfo.title}</p>
-                <p><strong>URL:</strong> {siteInfo.url}</p>
-                {siteInfo.pagesExplored && siteInfo.pagesExplored > 1 && (
-                  <p><strong>Pages explored:</strong> {siteInfo.pagesExplored}</p>
-                )}
-              </div>
-            )}
-            
-            <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[400px]">
+            {/* Sitemap Structure - Full Width at Top */}
+            <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[400px] mb-4">
+              <h4 className="font-medium mb-2">Sitemap Structure</h4>
               <pre className="whitespace-pre text-sm font-mono">
                 {sitemapData}
               </pre>
             </div>
+            
+            {/* Combined Site Info and Description */}
+            {(siteInfo || description) && (
+              <div className="bg-muted p-4 rounded-lg text-sm">
+                <h4 className="font-medium mb-2">Site Information & Overview</h4>
+                
+                {/* Site Info */}
+                {siteInfo && (
+                  <div className="mb-3">
+                    <p><strong>Site:</strong> {siteInfo.title}</p>
+                    <p><strong>URL:</strong> {siteInfo.url}</p>
+                    {siteInfo.pagesExplored && siteInfo.pagesExplored > 1 && (
+                      <p><strong>Pages explored:</strong> {siteInfo.pagesExplored}</p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Description */}
+                {description && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="font-medium mb-1">Overview:</p>
+                    <div className="whitespace-pre-wrap">
+                      {description}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm">
               <p className="font-medium mb-2">How to use in Figma:</p>
