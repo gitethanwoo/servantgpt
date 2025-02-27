@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { LoaderIcon, CopyIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { VisualSitemapRenderer } from '@/components/visual-sitemap-renderer';
 
 export function VisualSitemapTool() {
   const { data: session } = useSession();
@@ -111,7 +113,7 @@ export function VisualSitemapTool() {
     <div className="w-full max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-2 text-center">Visual Sitemap Generator</h1>
       <p className="text-sm text-center text-muted-foreground mb-6">
-        Generate a visual sitemap for any website and export to Figma
+        Generate a visual sitemap for any website and view it directly or export to Figma
       </p>
 
       <Card className="p-6">
@@ -161,7 +163,7 @@ export function VisualSitemapTool() {
 
         {sitemapData && (
           <div className="mt-6">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Sitemap Result</h3>
               <Button
                 variant="outline"
@@ -174,51 +176,68 @@ export function VisualSitemapTool() {
               </Button>
             </div>
             
-            {/* Sitemap Structure - Full Width at Top */}
-            <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[400px] mb-4">
-              <h4 className="font-medium mb-2">Sitemap Structure</h4>
-              <pre className="whitespace-pre text-sm font-mono">
-                {sitemapData}
-              </pre>
-            </div>
-            
-            {/* Combined Site Info and Description */}
-            {(siteInfo || description) && (
-              <div className="bg-muted p-4 rounded-lg text-sm">
-                <h4 className="font-medium mb-2">Site Information & Overview</h4>
-                
-                {/* Site Info */}
-                {siteInfo && (
-                  <div className="mb-3">
-                    <p><strong>Site:</strong> {siteInfo.title}</p>
-                    <p><strong>URL:</strong> {siteInfo.url}</p>
-                    {siteInfo.pagesExplored && siteInfo.pagesExplored > 1 && (
-                      <p><strong>Pages explored:</strong> {siteInfo.pagesExplored}</p>
-                    )}
-                  </div>
+            <Tabs defaultValue="visual" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="visual">Visual Sitemap</TabsTrigger>
+                <TabsTrigger value="text">Text Sitemap</TabsTrigger>
+                <TabsTrigger value="info">Site Info</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="visual" className="mt-0">
+                {sitemapData && (
+                  <VisualSitemapRenderer 
+                    sitemapText={sitemapData} 
+                    title={siteInfo?.title || 'Website Sitemap'} 
+                  />
                 )}
+              </TabsContent>
+              
+              <TabsContent value="text" className="mt-0">
+                <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[400px]">
+                  <h4 className="font-medium mb-2">Sitemap Structure</h4>
+                  <pre className="whitespace-pre text-sm font-mono">
+                    {sitemapData}
+                  </pre>
+                </div>
                 
-                {/* Description */}
-                {description && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <p className="font-medium mb-1">Overview:</p>
-                    <div className="whitespace-pre-wrap">
-                      {description}
+                <div className="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                  <p className="font-medium mb-2">How to use in Figma:</p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Install the &quot;Visual Sitemap&quot; plugin in Figma</li>
+                    <li>Open the plugin</li>
+                    <li>Paste the copied text into the plugin&apos;s editor</li>
+                    <li>Click &quot;Create&quot; to generate your visual sitemap</li>
+                  </ol>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="info" className="mt-0">
+                <div className="bg-muted p-4 rounded-lg text-sm">
+                  <h4 className="font-medium mb-2">Site Information & Overview</h4>
+                  
+                  {/* Site Info */}
+                  {siteInfo && (
+                    <div className="mb-3">
+                      <p><strong>Site:</strong> {siteInfo.title}</p>
+                      <p><strong>URL:</strong> {siteInfo.url}</p>
+                      {siteInfo.pagesExplored && siteInfo.pagesExplored > 1 && (
+                        <p><strong>Pages explored:</strong> {siteInfo.pagesExplored}</p>
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div className="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm">
-              <p className="font-medium mb-2">How to use in Figma:</p>
-              <ol className="list-decimal pl-5 space-y-1">
-                <li>Install the &quot;Visual Sitemap&quot; plugin in Figma</li>
-                <li>Open the plugin</li>
-                <li>Paste the copied text into the plugin&apos;s editor</li>
-                <li>Click &quot;Create&quot; to generate your visual sitemap</li>
-              </ol>
-            </div>
+                  )}
+                  
+                  {/* Description */}
+                  {description && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <p className="font-medium mb-1">Overview:</p>
+                      <div className="whitespace-pre-wrap">
+                        {description}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </Card>
