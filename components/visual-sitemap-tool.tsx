@@ -8,13 +8,10 @@ import { Input } from '@/components/ui/input';
 import { LoaderIcon, CopyIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 export function VisualSitemapTool() {
   const { data: session } = useSession();
   const [url, setUrl] = useState('');
-  const [depth, setDepth] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
   const [sitemapData, setSitemapData] = useState('');
   const [siteInfo, setSiteInfo] = useState<{ 
@@ -24,11 +21,8 @@ export function VisualSitemapTool() {
     pagesExplored?: number;
   } | null>(null);
   const [error, setError] = useState('');
-  const [debugMode, setDebugMode] = useState(false);
-  const [exploreMode, setExploreMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [linksToExplore, setLinksToExplore] = useState<any[]>([]);
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,45 +55,41 @@ export function VisualSitemapTool() {
     setSitemapData('');
     setSiteInfo(null);
     setDebugInfo(null);
-    setLinksToExplore([]);
     
     try {
-      // Build the API URL with query parameters
-      let apiUrl = `/api/tools/sitemap?url=${encodeURIComponent(processedUrl)}`;
+      // Use depth 2 by default which is sufficient for most sites
+      const apiUrl = `/api/tools/sitemap?url=${encodeURIComponent(processedUrl)}&depth=2`;
       
-      // Add debug and explore parameters if enabled
-      if (debugMode) apiUrl += '&debug=true';
-      if (exploreMode) apiUrl += '&explore=true';
-      
+      console.log('Fetching sitemap from:', apiUrl);
       const response = await fetch(apiUrl);
+      const data = await response.json();
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to generate sitemap: ${response.status}`);
+      console.log('API response:', data);
+      
+      // Check if the API returned an error
+      if (data.error) {
+        throw new Error(data.error);
       }
       
-      const data = await response.json();
+      if (!data.sitemap) {
+        throw new Error('No sitemap data returned');
+      }
+      
+      // Store the complete response for debugging
+      setDebugInfo(data);
+      
+      // Set the sitemap data and site info
       setSitemapData(data.sitemap);
       setSiteInfo({
-        title: data.title || '',
-        url: data.url || '',
-        pagesDiscovered: data.linksToExplore?.length || 0,
+        title: data.title || processedUrl,
+        url: data.url || processedUrl,
+        pagesDiscovered: 0,
         pagesExplored: data.pagesExplored || 1
       });
       
-      // Set debug info if available
-      if (data.debugInfo) {
-        setDebugInfo(data.debugInfo);
-      }
-      
-      // Set links to explore if available
-      if (data.linksToExplore) {
-        setLinksToExplore(data.linksToExplore);
-      }
-      
       toast.success('Sitemap generated successfully');
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error generating sitemap:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       toast.error('Failed to generate sitemap');
     } finally {
@@ -131,46 +121,6 @@ export function VisualSitemapTool() {
               onChange={(e) => setUrl(e.target.value)}
             />
             
-            <div>
-              <div className="flex justify-between mb-2">
-                <label className="text-sm font-medium">Crawl Depth:</label>
-                <span className="text-xs text-muted-foreground">
-                  {depth === 1 ? 'Faster, less complete' : depth >= 3 ? 'Slower, more complete' : 'Balanced'}
-                </span>
-              </div>
-              <Input
-                type="number"
-                min={1}
-                max={5}
-                value={depth}
-                onChange={(e) => setDepth(Math.max(1, Math.min(5, parseInt(e.target.value) || 1)))}
-                className="mb-2"
-              />
-              <div className="text-xs text-muted-foreground">
-                Higher depth values (1-5) will crawl more pages but take longer to complete.
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="debug-mode" 
-                  checked={debugMode} 
-                  onCheckedChange={setDebugMode} 
-                />
-                <Label htmlFor="debug-mode">Debug Mode</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="explore-mode" 
-                  checked={exploreMode} 
-                  onCheckedChange={setExploreMode} 
-                />
-                <Label htmlFor="explore-mode">Identify Links to Explore</Label>
-              </div>
-            </div>
-            
             <Button 
               type="submit" 
               disabled={isLoading}
@@ -192,7 +142,17 @@ export function VisualSitemapTool() {
 
         {error && (
           <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-lg">
-            {error}
+            <p className="font-semibold">Error:</p>
+            <p>{error}</p>
+            
+            {debugInfo && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm font-medium">Show technical details</summary>
+                <pre className="mt-2 text-xs overflow-auto p-2 bg-red-100 rounded">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         )}
 
@@ -218,9 +178,6 @@ export function VisualSitemapTool() {
                 {siteInfo.pagesExplored && siteInfo.pagesExplored > 1 && (
                   <p><strong>Pages explored:</strong> {siteInfo.pagesExplored}</p>
                 )}
-                {siteInfo.pagesDiscovered > 0 && (
-                  <p><strong>Links identified for exploration:</strong> {siteInfo.pagesDiscovered}</p>
-                )}
               </div>
             )}
             
@@ -229,36 +186,6 @@ export function VisualSitemapTool() {
                 {sitemapData}
               </pre>
             </div>
-            
-            {linksToExplore.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Links to Explore</h3>
-                <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[300px]">
-                  <ul className="space-y-3">
-                    {linksToExplore.map((link, i) => (
-                      <li key={i} className="border-b border-border pb-2 last:border-0 last:pb-0">
-                        <div className="font-medium">{link.text}</div>
-                        <div className="text-xs text-muted-foreground mb-1">{link.url}</div>
-                        {link.reason && (
-                          <div className="text-sm italic">Reason: {link.reason}</div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-            
-            {debugInfo && (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Debug Information</h3>
-                <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[300px]">
-                  <pre className="whitespace-pre-wrap text-xs font-mono">
-                    {JSON.stringify(debugInfo, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
             
             <div className="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm">
               <p className="font-medium mb-2">How to use in Figma:</p>

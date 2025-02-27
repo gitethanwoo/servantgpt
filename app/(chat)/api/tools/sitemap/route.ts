@@ -64,20 +64,18 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const url = searchParams.get('url');
-  const includeDebug = searchParams.get('debug') === 'true';
-  const exploreLinks = searchParams.get('explore') === 'true';
-  const depth = parseInt(searchParams.get('depth') || '3', 10);
+  // Set debug and explore to false by default
+  const exploreLinks = true;
+  // Use depth 2 by default as it's sufficient for most sites - only use 3+ if explicitly requested
+  const depth = parseInt(searchParams.get('depth') || '2', 10);
 
   if (!url) {
     return NextResponse.json({ error: 'URL is required' }, { status: 400 });
   }
 
   try {
-    // Create debug info object if debugging is enabled
-    const debugInfo = includeDebug ? {
-      crawlSteps: [] as any[],
-      error: null as string | null
-    } : null;
+    // Create debug info object if debugging is enabled (always null now)
+    const debugInfo = null;
     
     // Perform the multi-level crawl
     const result = await performMultiLevelCrawl(url, depth, exploreLinks, debugInfo);
@@ -87,9 +85,8 @@ export async function GET(request: Request) {
       sitemap: string;
       title: string;
       url: string;
-      linksToExplore?: IndexedLink[];
-      debugInfo?: any;
       pagesExplored?: number;
+      error?: string;
     } = { 
       sitemap: result.sitemap,
       title: result.title,
@@ -97,23 +94,17 @@ export async function GET(request: Request) {
       pagesExplored: result.pagesExplored
     };
     
-    // Include links to explore if requested
-    if (exploreLinks && result.linksToExplore) {
-      response.linksToExplore = result.linksToExplore;
-    }
-    
-    // Include debug info if requested
-    if (includeDebug && result.debugInfo) {
-      response.debugInfo = result.debugInfo;
-    }
-
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error generating sitemap:', error);
+    // Return a more graceful error response
     return NextResponse.json({ 
       error: 'Failed to generate sitemap',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      details: error instanceof Error ? error.message : 'Unknown error',
+      sitemap: `Error generating sitemap for ${url}`,
+      title: url,
+      url: url
+    }, { status: 200 }); // Return 200 with error details instead of 500
   }
 }
 
@@ -129,6 +120,10 @@ async function performMultiLevelCrawl(
   // Track all unique URLs we've seen to avoid duplicates
   const seenUrls = new Set<string>([normalizeUrl(startUrl)]);
   
+  // Keep a separate set to track URLs we've already explored (fetched or queued for fetching)
+  // This is to avoid the AI repeatedly selecting the same navigation links
+  const exploredUrls = new Set<string>([normalizeUrl(startUrl)]);
+  
   // Track all pages we've fetched data for
   const allPageData: Record<string, PageData> = {};
   
@@ -138,8 +133,20 @@ async function performMultiLevelCrawl(
   let nextLinkIndex = 0;
   
   // Start with the homepage
-  const homepageData = await fetchPage(startUrl);
-  allPageData[startUrl] = homepageData;
+  let homepageData: PageData;
+  try {
+    homepageData = await fetchPage(startUrl);
+    allPageData[startUrl] = homepageData;
+  } catch (error) {
+    console.error(`Failed to fetch homepage ${startUrl}:`, error);
+    // Create a minimal homepage data object if the homepage fetch fails
+    homepageData = {
+      title: `${startUrl} (Homepage)`,
+      url: startUrl,
+      links: {}
+    };
+    allPageData[startUrl] = homepageData;
+  }
   
   // Convert homepage links to indexed array and add to the Map
   const homepageLinks = convertLinksToIndexedArray(homepageData.links);
@@ -207,12 +214,21 @@ async function performMultiLevelCrawl(
           : link;
       });
       
-      // Identify which links should be explored next
-      const linksToExplore = await identifyLinksToExplore(
-        currentPageData, 
-        currentPageLinksForAI, 
-        debugInfo ? { page: currentUrl, ...debugInfo } : null
-      );
+      // Identify which links should be explored next, passing the explored URLs set
+      // to prevent selecting already explored links
+      let linksToExplore: IndexedLink[] = [];
+      try {
+        linksToExplore = await identifyLinksToExplore(
+          currentPageData, 
+          currentPageLinksForAI,
+          debugInfo ? { page: currentUrl, ...debugInfo } : null,
+          exploredUrls // Pass the set of already explored URLs
+        );
+      } catch (error) {
+        console.error(`Error identifying links to explore from ${currentUrl}:`, error);
+        // Continue with an empty list of links if the AI fails to identify links
+        linksToExplore = [];
+      }
       
       // Add the URLs to explore to the next level, if we haven't seen them before
       for (const link of linksToExplore) {
@@ -221,40 +237,48 @@ async function performMultiLevelCrawl(
           if (normalizedUrl && !seenUrls.has(normalizedUrl)) {
             nextLevelUrls.push(link.url);
             seenUrls.add(normalizedUrl);
+            exploredUrls.add(normalizedUrl); // Mark as explored
           }
         }
       }
     }
     
-    // Fetch all the pages for the next level
-    const nextLevelPageData = await Promise.all(
-      nextLevelUrls.map(async (url) => {
-        try {
-          return await fetchPage(url);
-        } catch (error) {
-          console.error(`Error fetching ${url}:`, error);
-          return null;
-        }
-      })
-    );
-    
-    // Add the successfully fetched pages to our collection
-    nextLevelPageData.forEach((pageData, index) => {
-      if (pageData) {
-        const url = nextLevelUrls[index];
-        allPageData[url] = pageData;
-        pagesExplored++;
-      }
-    });
-    
-    // Update the current level URLs for the next iteration
-    currentLevelUrls = nextLevelUrls.filter(url => allPageData[url] !== null);
-    
     // If we have no more URLs to explore, break out of the loop
-    if (currentLevelUrls.length === 0) {
+    if (nextLevelUrls.length === 0) {
       console.log(`No more URLs to explore at depth ${currentDepth}`);
       break;
     }
+    
+    // Fetch all the pages for the next level
+    const nextLevelPageDataPromises = nextLevelUrls.map(async (url) => {
+      try {
+        return { url, pageData: await fetchPage(url), success: true };
+      } catch (error) {
+        console.error(`Error fetching ${url}:`, error);
+        // Return a minimal failed result object instead of null
+        return { url, pageData: null, success: false, error };
+      }
+    });
+    
+    // Wait for all fetches to complete, successful or not
+    const nextLevelResults = await Promise.allSettled(nextLevelPageDataPromises);
+    
+    // Process the results
+    for (let i = 0; i < nextLevelResults.length; i++) {
+      const result = nextLevelResults[i];
+      
+      if (result.status === 'fulfilled') {
+        const { url, pageData, success } = result.value;
+        if (success && pageData) {
+          allPageData[url] = pageData;
+          pagesExplored++;
+        }
+      }
+      // If rejected, we just continue - the URL won't be added to allPageData
+    }
+    
+    // Update the current level URLs for the next iteration, filtering out failed fetches
+    currentLevelUrls = nextLevelUrls.filter(url => allPageData[url] !== undefined);
   }
   
   // Convert the Map values back to an array for the sitemap generation
@@ -266,26 +290,37 @@ async function performMultiLevelCrawl(
   }
   
   // Generate the final sitemap using all the links we've found
-  const sitemap = await generateComprehensiveSitemap(
-    homepageData, 
-    allLinks, 
-    Object.values(allPageData),
-    debugInfo
-  );
+  let sitemap = '';
+  try {
+    sitemap = await generateComprehensiveSitemap(
+      homepageData, 
+      allLinks, 
+      Object.values(allPageData),
+      debugInfo
+    );
+  } catch (error) {
+    console.error('Error generating sitemap:', error);
+    sitemap = `${homepageData.title}\n\t(Error generating sitemap: ${error instanceof Error ? error.message : 'Unknown error'})`;
+  }
   
   // If exploration is requested, identify links to explore from the homepage
   let homepageLinksToExplore: IndexedLink[] | undefined;
   
   if (exploreLinks) {
-    // Use the deduplicated homepage links for exploration
-    const dedupedHomepageLinks = homepageLinks.map(link => {
-      const normalizedUrl = normalizeUrl(link.url);
-      return normalizedUrl && linksMap.has(normalizedUrl) 
-        ? linksMap.get(normalizedUrl)! 
-        : link;
-    });
-    
-    homepageLinksToExplore = await identifyLinksToExplore(homepageData, dedupedHomepageLinks, debugInfo);
+    try {
+      // Use the deduplicated homepage links for exploration
+      const dedupedHomepageLinks = homepageLinks.map(link => {
+        const normalizedUrl = normalizeUrl(link.url);
+        return normalizedUrl && linksMap.has(normalizedUrl) 
+          ? linksMap.get(normalizedUrl)! 
+          : link;
+      });
+      
+      homepageLinksToExplore = await identifyLinksToExplore(homepageData, dedupedHomepageLinks, debugInfo);
+    } catch (error) {
+      console.error('Error identifying homepage links to explore:', error);
+      homepageLinksToExplore = [];
+    }
   }
   
   return {
@@ -350,10 +385,18 @@ async function fetchPage(url: string): Promise<PageData> {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
+      console.error(`Failed to fetch ${url} with status ${response.status}`);
       throw new Error(`Failed to fetch ${url}: ${response.status}`);
     }
     
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error(`Error parsing JSON for ${url}:`, jsonError);
+      throw new Error(`Error parsing response from ${url}`);
+    }
+    
     const title = data.data?.title || '';
     const links = data.data?.links || {};
     
@@ -378,12 +421,8 @@ async function fetchPage(url: string): Promise<PageData> {
     };
   } catch (error) {
     console.error(`Error fetching ${url}:`, error);
-    // Return a minimal page data object on error
-    return {
-      title: `Error: ${url}`,
-      url,
-      links: { "error": "Failed to fetch links" }
-    };
+    // Rethrow the error to be handled by the caller
+    throw error;
   }
 }
 
@@ -454,7 +493,7 @@ Guidelines:
   try {
     // Use generateText for a simple text-based sitemap
     const result = await generateText({
-      model: openai('gpt-4o'),
+      model: openai('o3-mini'),
       prompt: fullPrompt,
       temperature: 0.7,
       maxTokens: 1500,
@@ -478,7 +517,12 @@ Guidelines:
 }
 
 // Function to identify which links should be explored
-async function identifyLinksToExplore(homepageData: any, indexedLinks: IndexedLink[], debugInfo: any): Promise<IndexedLink[]> {
+async function identifyLinksToExplore(
+  pageData: any, 
+  indexedLinks: IndexedLink[], 
+  debugInfo: any,
+  alreadyExploredUrls: Set<string> = new Set()
+): Promise<IndexedLink[]> {
   // Define the schema for link exploration
   const linkExplorationSchema = z.object({
     reasoning: z.string().describe("Explain your overall strategy for selecting these links and how they will help build a more complete sitemap"),
@@ -490,10 +534,14 @@ async function identifyLinksToExplore(homepageData: any, indexedLinks: IndexedLi
   });
   
   // Filter out links that are likely not useful for sitemap exploration
+  // or have already been explored
   const filteredLinks = indexedLinks.filter(link => {
     if (!link.url) return false;
     
     const normalizedUrl = normalizeUrl(link.url);
+    
+    // Skip already explored URLs
+    if (alreadyExploredUrls.has(normalizedUrl)) return false;
     
     // Skip email links
     if (link.url.startsWith('mailto:')) return false;
@@ -519,27 +567,40 @@ async function identifyLinksToExplore(homepageData: any, indexedLinks: IndexedLi
     return true;
   });
   
+  // If we have no valid links after filtering, return empty array
+  if (filteredLinks.length === 0) {
+    return [];
+  }
+  
   const prompt = `
-You are a website information architect analyzing a website homepage to build a helpful sitemap.
+You are a website information architect analyzing a webpage to build a helpful sitemap.
 
 Your task is to identify which links should be explored further to build a more complete sitemap.
 First, provide your overall reasoning and strategy for the links you've selected.
-Links to external websites should not be explored unless they seem absolutely necessary and highly relevant. 
-Consider that if you see multiple links sharing the same structure, like /blog/how-to-write-code and /blog/how-to-manage-people, they probably don't need to both be explored, as they are likely variations of the same page. similarly, you don't need to explore /case-studies/case-study-1 and /case-studies/case-study-2, as they are likely variations of the same page.
 
-Homepage Title: ${homepageData.title}
-Homepage URL: ${homepageData.url}
+Current Page Title: ${pageData.title}
+Current Page URL: ${pageData.url}
+
+IMPORTANT PRIORITY GUIDELINES:
+1. PRIORITIZE content pages like articles, blog posts, and case studies over navigation links
+2. PRIORITIZE links that would reveal new sections of the site not yet explored
+3. AVOID selecting the main navigation links that have already been explored
+4. AVOID selecting similar content pages (e.g., if multiple blog posts are found, select at most 1-2 representative ones)
+5. Select no more than 5 links total
 
 Guidelines for selecting links to explore:
-1. Focus on links that likely lead to important sections or categories
-2. Prioritize links that would reveal the site's structure (like "Products", "Services", "Blog", "Insights", etc.)
-3. Ignore social media links and email addresses - they cannot be explored
-4. Select no more than 5 links to explore
-5. First provide your overall reasoning for your selection strategy, then list the links to explore
-6. IMPORTANT: If you see a link to a "Blog" or "Insights" section, ALWAYS include it as it likely contains important content
+- Focus on links that likely lead to important content or categories
+- Prefer links with descriptive titles that suggest unique content
+- Ignore social media links, email addresses, and utility links (login, search, etc.)
+- DO NOT select links that appear to be the main navigation unless they lead to unexplored areas
+- PREFER content links that contain terms like "article", "post", "case study", "project", etc.
 `;
 
-  const fullPrompt = prompt + `\n\nLinks found on the homepage (with indices):\n${JSON.stringify(filteredLinks, null, 2)}`;
+  const exploredMessage = alreadyExploredUrls.size > 0 
+    ? `\n\nNOTE: The following URLs have already been explored and should NOT be selected again:\n${Array.from(alreadyExploredUrls).join('\n')}`
+    : '';
+
+  const fullPrompt = prompt + exploredMessage + `\n\nLinks found on the page (with indices):\n${JSON.stringify(filteredLinks, null, 2)}`;
   
   if (debugInfo) {
     debugInfo.explorationPrompt = fullPrompt;
