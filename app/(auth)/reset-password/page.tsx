@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useState, Suspense } from 'react';
 import { toast } from 'sonner';
 import Form from 'next/form';
 
@@ -13,7 +13,8 @@ import { SubmitButton } from '@/components/submit-button';
 
 import { resetPassword, type ResetPasswordActionState } from '../actions';
 
-export default function ResetPasswordPage() {
+// Create a client component that uses useSearchParams
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -149,5 +150,34 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Create a loading fallback for the Suspense boundary
+function ResetPasswordLoading() {
+  return (
+    <div className="flex h-dvh w-screen items-start pt-12 md:pt-0 md:items-center justify-center bg-background">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl flex flex-col gap-12">
+        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+          <div className="h-4 w-64 bg-muted rounded animate-pulse mt-2" />
+        </div>
+        
+        <div className="flex flex-col gap-4 px-4 sm:px-16">
+          <div className="h-20 bg-muted rounded animate-pulse" />
+          <div className="h-20 bg-muted rounded animate-pulse" />
+          <div className="h-10 bg-muted rounded animate-pulse mt-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordLoading />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 } 
