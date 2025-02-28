@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import { render } from '@react-email/components';
+import PasswordResetEmail from '../emails/password-reset';
 
 // Initialize Resend with API key
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -23,30 +25,15 @@ export async function sendPasswordResetEmail({
 
   try {
     console.log('Attempting to send email via Resend');
+    
+    // Render the React Email template to HTML
+    const html = await render(PasswordResetEmail({ resetUrl }));
+    
     const { data, error } = await resend.emails.send({
-      from: 'ServantGPT <no-reply@servantgpt.com>',
+      from: 'ServantGPT <reset@servantgpt.com>',
       to: email,
       subject: 'Reset your password',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333; font-size: 24px;">Reset your password</h1>
-          <p style="color: #666; font-size: 16px; line-height: 1.5;">
-            We received a request to reset your password. Click the button below to create a new password.
-            This link will expire in 1 hour.
-          </p>
-          <div style="margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-              Reset Password
-            </a>
-          </div>
-          <p style="color: #666; font-size: 14px; line-height: 1.5;">
-            If you didn't request a password reset, you can safely ignore this email.
-          </p>
-          <p style="color: #666; font-size: 14px; line-height: 1.5;">
-            Or copy and paste this URL into your browser: ${resetUrl}
-          </p>
-        </div>
-      `,
+      html,
     });
 
     if (error) {

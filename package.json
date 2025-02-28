@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
-    "db:up": "drizzle-kit up"
+    "db:up": "drizzle-kit up",
+    "email": "email dev --dir emails"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.1.5",
@@ -109,6 +110,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@react-email/components": "^0.0.33",
     "@tailwindcss/typography": "^0.5.15",
     "@types/d3-scale": "^4.0.8",
     "@types/node": "^22.8.6",
@@ -124,6 +126,7 @@
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-tailwindcss": "^3.17.5",
     "postcss": "^8",
+    "react-email": "^3.0.7",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
