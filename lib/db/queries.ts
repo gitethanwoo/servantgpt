@@ -4,6 +4,7 @@ import { genSaltSync, hashSync } from 'bcrypt-ts';
 import { and, asc, desc, eq, gt, gte, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { randomUUID } from 'crypto';
 
 import {
   user,
@@ -16,6 +17,8 @@ import {
   message,
   vote,
   resource,
+  passwordReset,
+  type PasswordReset,
 } from './schema';
 import { BlockKind } from '@/components/block';
 
@@ -434,6 +437,94 @@ export async function getResourceById(id: string) {
     return selectedResource;
   } catch (error) {
     console.error('Failed to get resource by id from database');
+    throw error;
+  }
+}
+
+export async function createPasswordResetToken(userId: string): Promise<PasswordReset> {
+  try {
+    // Generate a random token
+    const token = randomUUID();
+    console.log('Generated reset token:', token);
+    
+    // Set expiration to 1 hour from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+    
+    // Create the reset token record
+    await db.insert(passwordReset).values({
+      userId,
+      token,
+      expiresAt,
+      createdAt: new Date(),
+      used: false,
+    });
+    console.log('Inserted reset token into database');
+    
+    // Return the created token
+    const [resetToken] = await db
+      .select()
+      .from(passwordReset)
+      .where(and(
+        eq(passwordReset.userId, userId),
+        eq(passwordReset.token, token)
+      ));
+    
+    if (!resetToken) {
+      console.error('Failed to retrieve the created token');
+      throw new Error('Failed to retrieve the created token');
+    }
+      
+    return resetToken;
+  } catch (error) {
+    console.error('Failed to create password reset token', error);
+    throw error;
+  }
+}
+
+export async function getValidPasswordResetToken(token: string): Promise<PasswordReset | null> {
+  try {
+    const now = new Date();
+    
+    const [resetToken] = await db
+      .select()
+      .from(passwordReset)
+      .where(and(
+        eq(passwordReset.token, token),
+        eq(passwordReset.used, false),
+        gt(passwordReset.expiresAt, now)
+      ));
+      
+    return resetToken || null;
+  } catch (error) {
+    console.error('Failed to get valid password reset token', error);
+    throw error;
+  }
+}
+
+export async function markPasswordResetTokenAsUsed(id: string): Promise<void> {
+  try {
+    await db
+      .update(passwordReset)
+      .set({ used: true })
+      .where(eq(passwordReset.id, id));
+  } catch (error) {
+    console.error('Failed to mark password reset token as used', error);
+    throw error;
+  }
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  try {
+    const salt = genSaltSync(10);
+    const hash = hashSync(newPassword, salt);
+    
+    await db
+      .update(user)
+      .set({ password: hash })
+      .where(eq(user.id, userId));
+  } catch (error) {
+    console.error('Failed to update user password', error);
     throw error;
   }
 }

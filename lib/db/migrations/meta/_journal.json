@@ -50,6 +50,13 @@
       "when": 1739978705565,
       "tag": "0006_worthless_azazel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1740695785224,
+      "tag": "0007_aspiring_mac_gargan",
+      "breakpoints": true
     }
   ]
 }

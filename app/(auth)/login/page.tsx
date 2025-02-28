@@ -49,6 +49,15 @@ export default function Page() {
           </p>
         </div>
         <AuthForm action={handleSubmit} defaultEmail={email}>
+          <div className="flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-gray-600 hover:underline dark:text-zinc-400"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          
           <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
           <p className="text-center text-sm text-gray-600 mt-4 dark:text-zinc-400">
             {"Don't have an account? "}
