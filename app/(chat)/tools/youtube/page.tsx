@@ -7,7 +7,7 @@ export default function YouTubeToolPage() {
   return (
     <>
       <ToolHeader selectedToolId="youtube" />
-      <div className="p-6">
+      <div className="p-5">
         <YoutubeTranscriptTool />
       </div>
     </>
