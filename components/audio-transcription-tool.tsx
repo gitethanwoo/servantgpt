@@ -102,11 +102,11 @@ export function AudioTranscriptionTool() {
       'video/*': ['.mp4', '.webm', '.mov'],
     },
     maxFiles: 1,
-    maxSize: 200 * 1024 * 1024, // 200MB in bytes
+    maxSize: 800 * 1024 * 1024, // 800MB in bytes
     onDropRejected: (fileRejections) => {
       const rejection = fileRejections[0];
       if (rejection?.errors[0]?.code === 'file-too-large') {
-        toast.error('File is too large. Maximum size is 200MB');
+        toast.error('File is too large. Maximum size is 800MB');
       }
     },
   });
@@ -166,7 +166,7 @@ export function AudioTranscriptionTool() {
               : 'Drag and drop an audio file here, or click to select'}
           </p>
           <p className="text-sm text-gray-500">
-            Supported formats: MP3, MP4, M4A, WAV, WEBM (max 200MB)
+            Supported formats: MP3, MP4, M4A, WAV, WEBM (max 800MB)
           </p>
         </div>
 
